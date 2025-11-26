@@ -7,12 +7,25 @@ import { Monitor, LayoutGrid } from 'lucide-react';
 import { MOCK_PRODUCTS } from './constants';
 
 export default function App() {
+  // Persistence Helper
+  const loadState = <T,>(key: string, fallback: T): T => {
+    try {
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : fallback;
+    } catch (e) {
+      console.error('Failed to load state', e);
+      return fallback;
+    }
+  };
+
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.ADMIN);
   const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>(AdminTab.DASHBOARD);
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
+  
+  // Persisted State
+  const [products, setProducts] = useState<Product[]>(() => loadState('nexus_products', MOCK_PRODUCTS));
   
   // Page Management State
-  const [pages, setPages] = useState<Page[]>([
+  const [pages, setPages] = useState<Page[]>(() => loadState('nexus_pages', [
     { 
       id: 'home', 
       title: 'Home', 
@@ -63,10 +76,10 @@ export default function App() {
         }
       ]
     }
-  ]);
+  ]));
   const [activePageId, setActivePageId] = useState<string>('home');
 
-  const [storeConfig, setStoreConfig] = useState<StoreConfig>({
+  const [storeConfig, setStoreConfig] = useState<StoreConfig>(() => loadState('nexus_config', {
     name: 'EVOLV',
     currency: 'USD',
     headerStyle: 'canvas',
@@ -76,7 +89,20 @@ export default function App() {
     primaryColor: '#3b82f6',
     logoUrl: '',
     logoHeight: 32
-  });
+  }));
+
+  // Persistence Effects
+  React.useEffect(() => {
+    localStorage.setItem('nexus_products', JSON.stringify(products));
+  }, [products]);
+
+  React.useEffect(() => {
+    localStorage.setItem('nexus_pages', JSON.stringify(pages));
+  }, [pages]);
+
+  React.useEffect(() => {
+    localStorage.setItem('nexus_config', JSON.stringify(storeConfig));
+  }, [storeConfig]);
 
   const handleAddProduct = (product: Product) => {
     setProducts((prev) => [product, ...prev]);

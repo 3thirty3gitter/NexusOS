@@ -12,16 +12,16 @@ export enum AdminTab {
   SETTINGS = 'SETTINGS'
 }
 
-export type HeaderStyleId = 
-  | 'canvas' 
-  | 'nebula' 
-  | 'bunker' 
-  | 'orbit' 
-  | 'protocol' 
-  | 'horizon' 
-  | 'studio' 
-  | 'terminal' 
-  | 'portfolio' 
+export type HeaderStyleId =
+  | 'canvas'
+  | 'nebula'
+  | 'bunker'
+  | 'orbit'
+  | 'protocol'
+  | 'horizon'
+  | 'studio'
+  | 'terminal'
+  | 'portfolio'
   | 'venture'
   | 'metro'
   | 'modul'
@@ -42,7 +42,7 @@ export type HeroStyleId =
   | 'grid'
   | 'typographic';
 
-export type ProductCardStyleId = 
+export type ProductCardStyleId =
   | 'classic'
   | 'industrial'
   | 'focus'
@@ -86,7 +86,7 @@ export interface NavLink {
 
 export interface PageBlock {
   id: string;
-  type: 'section' | 'system-hero' | 'system-grid' | 'system-footer';
+  type: 'section' | 'system-hero' | 'system-grid' | 'system-footer' | 'system-ui';
   name: string;
   content: string; // HTML content for 'section', ignored/metadata for system blocks
   variant?: string; // Optional override for system styles (e.g. 'impact', 'minimal')
@@ -131,4 +131,5 @@ export interface StorefrontProps {
   previewBlock?: PageBlock | null;
   activeBlockId?: string | null;
   onUpdateBlock?: (blockId: string, data: any) => void;
+  scrolledBlockId?: string | null;
 }

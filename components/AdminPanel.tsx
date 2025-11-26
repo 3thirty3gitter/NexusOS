@@ -5,15 +5,34 @@ import { HEADER_OPTIONS, HEADER_COMPONENTS } from './HeaderLibrary';
 import { HERO_OPTIONS, HERO_COMPONENTS, HERO_FIELDS } from './HeroLibrary';
 import { PRODUCT_CARD_OPTIONS, PRODUCT_CARD_COMPONENTS } from './ProductCardLibrary';
 import { FOOTER_OPTIONS } from './FooterLibrary';
+import { SECTION_CATEGORIES, SECTION_OPTIONS } from './SectionLibrary';
+
 import { Storefront } from './Storefront';
-import { 
-  LayoutDashboard, 
-  Package, 
-  Palette, 
-  Megaphone, 
-  Settings, 
-  TrendingUp, 
-  Users, 
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  LayoutDashboard,
+  Package,
+  Palette,
+  Megaphone,
+  Settings,
+  TrendingUp,
+  Users,
   DollarSign,
   Zap,
   ShoppingBag,
@@ -65,13 +84,62 @@ import {
   MousePointerClick,
   Check,
   Pencil,
-  AlertTriangle
+  AlertTriangle,
+  GripVertical
 } from 'lucide-react';
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ 
-  activeTab, 
-  onTabChange, 
-  config, 
+interface SortableBlockItemProps {
+  id: string;
+  block: PageBlock;
+  index: number;
+  isActive: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+const SortableBlockItem = ({ id, block, index, isActive, onEdit, onDelete }: SortableBlockItemProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className={`group flex items-center justify-between p-3 rounded-lg border transition-all ${isActive ? 'bg-neutral-800 border-neutral-700' : 'bg-transparent border-transparent hover:bg-white/5'}`}>
+      <div className="flex items-center gap-3 overflow-hidden">
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-neutral-600 hover:text-white touch-none">
+          <GripVertical size={14} />
+        </button>
+        <div className="text-[10px] font-bold text-neutral-600 w-4">{index + 1}</div>
+        <div className="flex flex-col">
+          <span className="text-xs font-medium text-white truncate max-w-[100px]">{block.name}</span>
+          <span className="text-[10px] text-neutral-500 uppercase">{block.type.replace('system-', '')}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onEdit}
+          className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded transition-colors" title="Edit Section"
+        >
+          <Edit3 size={14} />
+        </button>
+        <button onClick={onDelete} className="p-1.5 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors ml-1"><Trash2 size={14} /></button>
+      </div>
+    </div>
+  );
+};
+
+export const AdminPanel: React.FC<AdminPanelProps> = ({
+  activeTab,
+  onTabChange,
+  config,
   onConfigChange,
   products,
   onAddProduct,
@@ -81,7 +149,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdatePage,
   onSetActivePage
 }) => {
-  
+
   // Magic Upload State
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadStep, setUploadStep] = useState<'upload' | 'analyzing' | 'review'>('upload');
@@ -104,12 +172,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isRewriting, setIsRewriting] = useState(false);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [showPageProperties, setShowPageProperties] = useState(false);
-  
+
   // MODAL STATES
   const [isHeaderModalOpen, setIsHeaderModalOpen] = useState(false);
   const [isSystemModalOpen, setIsSystemModalOpen] = useState(false);
   const [systemModalType, setSystemModalType] = useState<'hero' | 'grid' | 'footer' | null>(null);
-  
+
   // ADD SECTION STATES
   const [isAddSectionOpen, setIsAddSectionOpen] = useState(false);
   const [addSectionStep, setAddSectionStep] = useState<'categories' | 'options'>('categories');
@@ -134,7 +202,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // Logo Upload State
   const [logoMode, setLogoMode] = useState<'text' | 'image'>(config.logoUrl ? 'image' : 'text');
-  
+
   // Live Preview State
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
 
@@ -144,6 +212,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Editor Resize State
   const [editorWidth, setEditorWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
+  const [scrolledBlockId, setScrolledBlockId] = useState<string | null>(null);
+
+  // Drag & Drop Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = activePage.blocks.findIndex((b) => b.id === active.id);
+      const newIndex = activePage.blocks.findIndex((b) => b.id === over.id);
+
+      const newBlocks = arrayMove(activePage.blocks, oldIndex, newIndex);
+      onUpdatePage(activePageId, { blocks: newBlocks });
+    }
+  };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -181,22 +270,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // --- ARCHITECT GENERATOR ---
   const constructBlockHTML = (cfg: typeof architectConfig) => {
-     // ... existing code ...
-     const heightClasses: any = { small: 'py-12', medium: 'py-24', large: 'min-h-[600px]', full: 'min-h-screen' };
-     const alignClasses: any = { left: 'text-left items-start', center: 'text-center items-center', right: 'text-right items-end' };
-     
-     let bgClass = 'bg-white text-neutral-900';
-     if (cfg.bgMode === 'dark') bgClass = 'bg-neutral-950 text-white';
-     if (cfg.bgMode === 'gradient') bgClass = 'bg-gradient-to-br from-blue-900 via-neutral-900 to-black text-white';
-     if (cfg.bgMode === 'noise') bgClass = 'bg-neutral-100 text-neutral-900 bg-[url("https://grainy-gradients.vercel.app/noise.svg")]';
+    // ... existing code ...
+    const heightClasses: any = { small: 'py-12', medium: 'py-24', large: 'min-h-[600px]', full: 'min-h-screen' };
+    const alignClasses: any = { left: 'text-left items-start', center: 'text-center items-center', right: 'text-right items-end' };
 
-     const glassClass = cfg.glass ? 'backdrop-blur-xl bg-white/10 border border-white/20 shadow-xl' : '';
-     const animClass = cfg.animation === 'fade' ? 'animate-in fade-in duration-1000' : 
-                       cfg.animation === 'zoom' ? 'animate-in zoom-in-95 duration-1000' : 
-                       cfg.animation === 'slide' ? 'animate-in slide-in-from-bottom-8 duration-1000' : '';
+    let bgClass = 'bg-white text-neutral-900';
+    if (cfg.bgMode === 'dark') bgClass = 'bg-neutral-950 text-white';
+    if (cfg.bgMode === 'gradient') bgClass = 'bg-gradient-to-br from-blue-900 via-neutral-900 to-black text-white';
+    if (cfg.bgMode === 'noise') bgClass = 'bg-neutral-100 text-neutral-900 bg-[url("https://grainy-gradients.vercel.app/noise.svg")]';
 
-     if (cfg.layout === 'hero') {
-        return `
+    const glassClass = cfg.glass ? 'backdrop-blur-xl bg-white/10 border border-white/20 shadow-xl' : '';
+    const animClass = cfg.animation === 'fade' ? 'animate-in fade-in duration-1000' :
+      cfg.animation === 'zoom' ? 'animate-in zoom-in-95 duration-1000' :
+        cfg.animation === 'slide' ? 'animate-in slide-in-from-bottom-8 duration-1000' : '';
+
+    if (cfg.layout === 'hero') {
+      return `
           <div class="relative w-full ${heightClasses[cfg.height]} flex flex-col justify-center overflow-hidden">
              <div class="absolute inset-0">
                 <img src="${cfg.image}" class="w-full h-full object-cover ${cfg.bgMode === 'dark' ? 'opacity-40' : 'opacity-90'}" />
@@ -210,10 +299,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
              </div>
           </div>
         `;
-     }
-     if (cfg.layout === 'split') {
-        const order = cfg.alignment === 'right' ? 'order-first' : 'order-last';
-        return `
+    }
+    if (cfg.layout === 'split') {
+      const order = cfg.alignment === 'right' ? 'order-first' : 'order-last';
+      return `
           <div class="grid grid-cols-1 md:grid-cols-2 gap-0 w-full ${bgClass} overflow-hidden">
              <div class="relative h-[400px] md:h-auto ${order}">
                 <img src="${cfg.image}" class="absolute inset-0 w-full h-full object-cover" />
@@ -224,9 +313,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
              </div>
           </div>
         `;
-     }
-     if (cfg.layout === 'card') {
-        return `
+    }
+    if (cfg.layout === 'card') {
+      return `
           <div class="w-full ${bgClass} ${heightClasses[cfg.height]} flex items-center justify-center px-6">
              <div class="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
                 <div class="rounded-3xl overflow-hidden shadow-2xl ${animClass}">
@@ -240,8 +329,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
              </div>
           </div>
         `;
-     }
-     return `
+    }
+    return `
         <div class="w-full ${heightClasses[cfg.height]} ${bgClass} flex flex-col ${alignClasses[cfg.alignment]} justify-center px-6 md:px-24 ${animClass}">
            <h2 class="text-5xl md:text-8xl font-black tracking-tighter mb-4">${cfg.heading}</h2>
            <p class="text-xl md:text-2xl opacity-60 max-w-3xl">${cfg.body}</p>
@@ -265,21 +354,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const simulateImageGen = () => {
     setIsGeneratingImage(true);
     setTimeout(() => {
-       const images = [
-          'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1000&auto=format&fit=crop',
-          'https://images.unsplash.com/photo-1535868463750-c78d9543614f?q=80&w=1000&auto=format&fit=crop',
-          'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?q=80&w=1000&auto=format&fit=crop',
-          'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?q=80&w=1000&auto=format&fit=crop'
-       ];
-       setArchitectConfig(prev => ({...prev, image: images[Math.floor(Math.random() * images.length)]}));
-       setIsGeneratingImage(false);
+      const images = [
+        'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1535868463750-c78d9543614f?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?q=80&w=1000&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?q=80&w=1000&auto=format&fit=crop'
+      ];
+      setArchitectConfig(prev => ({ ...prev, image: images[Math.floor(Math.random() * images.length)] }));
+      setIsGeneratingImage(false);
     }, 2000);
   };
 
   // -------------------------
 
   const startMagicUpload = (imageUrl: string) => {
-     // ... same as before
+    // ... same as before
     setNewProductImage(imageUrl);
     setUploadStep('analyzing');
     setAnalysisProgress(0);
@@ -328,17 +417,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleAddNewPage = () => {
     const newPage: Page = {
+      id: Math.random().toString(36).substr(2, 9),
+      title: 'New Page',
+      slug: '/new-page',
+      type: 'custom',
+      content: '',
+      blocks: [{
         id: Math.random().toString(36).substr(2, 9),
-        title: 'New Page',
-        slug: '/new-page',
-        type: 'custom',
-        content: '',
-        blocks: [{
-           id: Math.random().toString(36).substr(2, 9),
-           type: 'section',
-           name: 'Intro Text',
-           content: '<p>Start writing your story here...</p>'
-        }]
+        type: 'section',
+        name: 'Intro Text',
+        content: '<p>Start writing your story here...</p>'
+      }]
     };
     onAddPage(newPage);
   };
@@ -347,34 +436,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const addBlock = (html: string, name: string, type: PageBlock['type'] = 'section', variant?: string) => {
     const newBlock: PageBlock = {
-       id: Math.random().toString(36).substr(2, 9),
-       type: type,
-       name: name,
-       content: html,
-       variant: variant,
-       data: {}
+      id: Math.random().toString(36).substr(2, 9),
+      type: type,
+      name: name,
+      content: html,
+      variant: variant,
+      data: {}
     };
     const updatedBlocks = [...(activePage.blocks || []), newBlock];
     onUpdatePage(activePageId, { blocks: updatedBlocks });
     setSelectedBlockId(newBlock.id);
-    setIsAddSectionOpen(false);
-    setPreviewBlock(null);
-    setAddSectionStep('categories');
-    setSelectedCategory(null);
+    setScrolledBlockId(newBlock.id);
+    // Keep modal open so user can add more sections
+    // setIsAddSectionOpen(false);
+    // setPreviewBlock(null);
+    // setAddSectionStep('categories');
+    // setSelectedCategory(null);
   };
 
   const updateActiveBlock = (content: string) => {
     if (!selectedBlockId) return;
-    const updatedBlocks = activePage.blocks.map(b => 
-       b.id === selectedBlockId ? { ...b, content } : b
+    const updatedBlocks = activePage.blocks.map(b =>
+      b.id === selectedBlockId ? { ...b, content } : b
     );
     onUpdatePage(activePageId, { blocks: updatedBlocks });
   };
-  
+
   const updateActiveBlockData = (blockId: string, data: any) => {
     if (!blockId) return;
-    const updatedBlocks = activePage.blocks.map(b => 
-       b.id === blockId ? { ...b, data: { ...b.data, ...data } } : b
+    const updatedBlocks = activePage.blocks.map(b =>
+      b.id === blockId ? { ...b, data: { ...b.data, ...data } } : b
     );
     onUpdatePage(activePageId, { blocks: updatedBlocks });
   }
@@ -382,7 +473,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const moveBlock = (index: number, direction: -1 | 1) => {
     const blocks = [...activePage.blocks];
     if (index + direction < 0 || index + direction >= blocks.length) return;
-    
+
     const temp = blocks[index];
     blocks[index] = blocks[index + direction];
     blocks[index + direction] = temp;
@@ -390,9 +481,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const deleteBlock = (id: string) => {
-     const updatedBlocks = activePage.blocks.filter(b => b.id !== id);
-     onUpdatePage(activePageId, { blocks: updatedBlocks });
-     if (selectedBlockId === id) setSelectedBlockId(null);
+    const updatedBlocks = activePage.blocks.filter(b => b.id !== id);
+    onUpdatePage(activePageId, { blocks: updatedBlocks });
+    if (selectedBlockId === id) setSelectedBlockId(null);
   };
 
   const handlePreviewBlock = (type: PageBlock['type'], name: string, html: string = '', variant?: string) => {
@@ -407,27 +498,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // ----------------------------------
-  
+
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            onConfigChange({ ...config, logoUrl: reader.result as string });
-        };
-        reader.readAsDataURL(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onConfigChange({ ...config, logoUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
     }
   };
-  
+
   const handleBlockImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      // not used directly, passed down
+    // not used directly, passed down
   }
 
   const generateCampaign = () => {
     setIsGeneratingEmail(true);
     setGeneratedEmail('');
     const fullText = `Subject: Flash Sale: The Cyber Shell Jacket is waiting for you.\n\nHey [Customer Name],\n\nWe noticed you've been eyeing the Cyber Shell Jacket. Good news—it's currently one of our most sought-after pieces this season.\n\nFor the next 24 hours, we're unlocking an exclusive 20% off just for our VIP members. \n\nUse Code: NEXUS20\n\nDon't let this slip into the void.\n\n- The Nexus Team`;
-    
+
     let i = 0;
     const interval = setInterval(() => {
       setGeneratedEmail((prev) => prev + fullText.charAt(i));
@@ -450,11 +541,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const renderSortControls = (currentSort: 'az' | 'new' | 'hot', setSort: (s: 'az' | 'new' | 'hot') => void) => (
     <div className="flex justify-end mb-4">
-        <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-1 flex gap-1">
-            <button onClick={(e) => { e.stopPropagation(); setSort('az'); }} className={`px-2 py-1 rounded text-[10px] font-bold ${currentSort === 'az' ? 'bg-neutral-800 text-white' : 'text-neutral-500'}`}><ArrowDownAZ size={12} /></button>
-            <button onClick={(e) => { e.stopPropagation(); setSort('new'); }} className={`px-2 py-1 rounded text-[10px] font-bold ${currentSort === 'new' ? 'bg-neutral-800 text-white' : 'text-neutral-500'}`}><Calendar size={12} /></button>
-            <button onClick={(e) => { e.stopPropagation(); setSort('hot'); }} className={`px-2 py-1 rounded text-[10px] font-bold ${currentSort === 'hot' ? 'bg-neutral-800 text-white' : 'text-neutral-500'}`}><Flame size={12} /></button>
-        </div>
+      <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-1 flex gap-1">
+        <button onClick={(e) => { e.stopPropagation(); setSort('az'); }} className={`px-2 py-1 rounded text-[10px] font-bold ${currentSort === 'az' ? 'bg-neutral-800 text-white' : 'text-neutral-500'}`}><ArrowDownAZ size={12} /></button>
+        <button onClick={(e) => { e.stopPropagation(); setSort('new'); }} className={`px-2 py-1 rounded text-[10px] font-bold ${currentSort === 'new' ? 'bg-neutral-800 text-white' : 'text-neutral-500'}`}><Calendar size={12} /></button>
+        <button onClick={(e) => { e.stopPropagation(); setSort('hot'); }} className={`px-2 py-1 rounded text-[10px] font-bold ${currentSort === 'hot' ? 'bg-neutral-800 text-white' : 'text-neutral-500'}`}><Flame size={12} /></button>
+      </div>
     </div>
   );
 
@@ -477,11 +568,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <button
             key={item.id}
             onClick={() => onTabChange(item.id)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-              activeTab === item.id 
-                ? 'bg-blue-600/10 text-blue-500 border border-blue-600/20' 
-                : 'hover:bg-white/5 hover:text-white'
-            }`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === item.id
+              ? 'bg-blue-600/10 text-blue-500 border border-blue-600/20'
+              : 'hover:bg-white/5 hover:text-white'
+              }`}
           >
             <item.icon size={18} />
             <span className="font-medium text-sm">{item.label}</span>
@@ -496,45 +586,45 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!isHeaderModalOpen) return null;
     const style = { left: editorWidth + 256 }; // 256 is sidebar width
     return (
-       <div style={style} className="fixed top-0 bottom-0 w-96 z-[90] bg-neutral-950 flex flex-col border-r border-neutral-800 shadow-2xl animate-in slide-in-from-left duration-300">
-          <div className="p-6 border-b border-neutral-800 flex justify-between items-center bg-neutral-900/50 sticky top-0 backdrop-blur z-20">
-             <div className="flex items-center gap-3">
-                <PanelTop size={20} className="text-blue-500" />
-                <div><h3 className="text-white font-bold">Header Studio</h3><p className="text-xs text-neutral-500">Global Navigation</p></div>
-             </div>
-             <button onClick={() => setIsHeaderModalOpen(false)} className="text-neutral-500 hover:text-white"><X size={20} /></button>
+      <div style={style} className="fixed top-0 bottom-0 w-96 z-[90] bg-neutral-950 flex flex-col border-r border-neutral-800 shadow-2xl animate-in slide-in-from-left duration-300">
+        <div className="p-6 border-b border-neutral-800 flex justify-between items-center bg-neutral-900/50 sticky top-0 backdrop-blur z-20">
+          <div className="flex items-center gap-3">
+            <PanelTop size={20} className="text-blue-500" />
+            <div><h3 className="text-white font-bold">Header Studio</h3><p className="text-xs text-neutral-500">Global Navigation</p></div>
           </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
-             {/* Branding Section */}
-             <div>
-                 <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Sparkles size={14} /> Identity</h4>
-                 <div className="space-y-4 bg-neutral-900 p-4 rounded-xl border border-neutral-800">
-                     <div className="flex bg-black p-1 rounded-lg border border-neutral-800">
-                         <button onClick={() => { setLogoMode('text'); onConfigChange({...config, logoUrl: ''}); }} className={`flex-1 py-2 rounded text-xs font-bold ${logoMode === 'text' ? 'bg-neutral-800 text-white' : 'text-neutral-500'}`}>Text</button>
-                         <button onClick={() => setLogoMode('image')} className={`flex-1 py-2 rounded text-xs font-bold ${logoMode === 'image' ? 'bg-neutral-800 text-white' : 'text-neutral-500'}`}>Logo</button>
-                     </div>
-                     {logoMode === 'image' && (
-                          <div className="space-y-2">
-                              <label className="flex items-center justify-center gap-2 w-full p-3 border border-dashed border-neutral-700 rounded bg-black cursor-pointer hover:border-blue-500"><Upload size={14} className="text-neutral-400" /><span className="text-xs text-neutral-400">Upload Image</span><input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" /></label>
-                              <input type="range" min="20" max="120" value={config.logoHeight || 32} onChange={(e) => onConfigChange({...config, logoHeight: parseInt(e.target.value)})} className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-600" />
-                          </div>
-                     )}
-                 </div>
-             </div>
-             {/* Style Grid */}
-             <div>
-                <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><LayoutTemplate size={14} /> Architecture</h4>
-                {renderSortControls(modalSort, setModalSort)}
-                <div className="grid grid-cols-2 gap-2">
-                   {sortItems(HEADER_OPTIONS, modalSort).map((header) => (
-                     <button key={header.id} onClick={() => onConfigChange({ ...config, headerStyle: header.id as HeaderStyleId })} className={`text-left p-3 rounded-lg border transition-all ${config.headerStyle === header.id ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-600'}`}>
-                        <div className="font-bold text-xs mb-1 truncate">{header.name}</div>
-                     </button>
-                   ))}
+          <button onClick={() => setIsHeaderModalOpen(false)} className="text-neutral-500 hover:text-white"><X size={20} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+          {/* Branding Section */}
+          <div>
+            <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Sparkles size={14} /> Identity</h4>
+            <div className="space-y-4 bg-neutral-900 p-4 rounded-xl border border-neutral-800">
+              <div className="flex bg-black p-1 rounded-lg border border-neutral-800">
+                <button onClick={() => { setLogoMode('text'); onConfigChange({ ...config, logoUrl: '' }); }} className={`flex-1 py-2 rounded text-xs font-bold ${logoMode === 'text' ? 'bg-neutral-800 text-white' : 'text-neutral-500'}`}>Text</button>
+                <button onClick={() => setLogoMode('image')} className={`flex-1 py-2 rounded text-xs font-bold ${logoMode === 'image' ? 'bg-neutral-800 text-white' : 'text-neutral-500'}`}>Logo</button>
+              </div>
+              {logoMode === 'image' && (
+                <div className="space-y-2">
+                  <label className="flex items-center justify-center gap-2 w-full p-3 border border-dashed border-neutral-700 rounded bg-black cursor-pointer hover:border-blue-500"><Upload size={14} className="text-neutral-400" /><span className="text-xs text-neutral-400">Upload Image</span><input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" /></label>
+                  <input type="range" min="20" max="120" value={config.logoHeight || 32} onChange={(e) => onConfigChange({ ...config, logoHeight: parseInt(e.target.value) })} className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-600" />
                 </div>
-             </div>
+              )}
+            </div>
           </div>
-       </div>
+          {/* Style Grid */}
+          <div>
+            <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><LayoutTemplate size={14} /> Architecture</h4>
+            {renderSortControls(modalSort, setModalSort)}
+            <div className="grid grid-cols-2 gap-2">
+              {sortItems(HEADER_OPTIONS, modalSort).map((header) => (
+                <button key={header.id} onClick={() => onConfigChange({ ...config, headerStyle: header.id as HeaderStyleId })} className={`text-left p-3 rounded-lg border transition-all ${config.headerStyle === header.id ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-600'}`}>
+                  <div className="font-bold text-xs mb-1 truncate">{header.name}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -543,193 +633,193 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [pendingVariant, setPendingVariant] = useState<string | null>(null);
 
   const renderSystemBlockModal = () => {
-      if (!isSystemModalOpen || !systemModalType) return null;
-      
-      let options: any[] = [];
-      let currentSelection = '';
-      let title = '';
-      let setSelection: (id: string) => void = () => {};
-      let color = 'blue';
+    if (!isSystemModalOpen || !systemModalType) return null;
 
-      const handleHeroVariantChange = (id: string) => {
-          if (!selectedBlockId || !activeBlock || !activeBlock.data) {
-             const updatedBlocks = activePage.blocks.map(b => b.id === selectedBlockId ? { ...b, variant: id } : b);
-             onUpdatePage(activePageId, { blocks: updatedBlocks });
-             return;
-          }
+    let options: any[] = [];
+    let currentSelection = '';
+    let title = '';
+    let setSelection: (id: string) => void = () => { };
+    let color = 'blue';
 
-          const currentFields = Object.keys(activeBlock.data).filter(k => activeBlock.data![k]);
-          const targetFields = HERO_FIELDS[id] || [];
-          
-          const lostFields = currentFields.filter(field => !targetFields.includes(field));
-
-          if (lostFields.length > 0) {
-              setWarningFields(lostFields);
-              setPendingVariant(id);
-          } else {
-              const updatedBlocks = activePage.blocks.map(b => b.id === selectedBlockId ? { ...b, variant: id } : b);
-              onUpdatePage(activePageId, { blocks: updatedBlocks });
-          }
-      };
-
-      const confirmVariantChange = () => {
-          if (pendingVariant && selectedBlockId) {
-             const updatedBlocks = activePage.blocks.map(b => b.id === selectedBlockId ? { ...b, variant: pendingVariant } : b);
-             onUpdatePage(activePageId, { blocks: updatedBlocks });
-             setPendingVariant(null);
-             setWarningFields([]);
-          }
-      };
-
-      if (systemModalType === 'hero') {
-          options = HERO_OPTIONS;
-          // If a block is selected, use its variant, otherwise global
-          currentSelection = selectedBlockId ? activeBlock?.variant || config.heroStyle : config.heroStyle;
-          title = 'Hero Engine';
-          setSelection = (id) => {
-              if (selectedBlockId) {
-                  handleHeroVariantChange(id);
-              } else {
-                  onConfigChange({...config, heroStyle: id as HeroStyleId});
-              }
-          };
-          color = 'purple';
-      } else if (systemModalType === 'grid') {
-          options = PRODUCT_CARD_OPTIONS;
-          currentSelection = selectedBlockId ? activeBlock?.variant || config.productCardStyle : config.productCardStyle;
-          title = 'Product Grid Engine';
-          setSelection = (id) => {
-               if (selectedBlockId) {
-                  const updatedBlocks = activePage.blocks.map(b => b.id === selectedBlockId ? { ...b, variant: id } : b);
-                  onUpdatePage(activePageId, { blocks: updatedBlocks });
-              } else {
-                  onConfigChange({...config, productCardStyle: id as ProductCardStyleId});
-              }
-          };
-          color = 'green';
-      } else if (systemModalType === 'footer') {
-          options = FOOTER_OPTIONS;
-          currentSelection = config.footerStyle;
-          title = 'Footer Architecture';
-          setSelection = (id) => onConfigChange({...config, footerStyle: id as FooterStyleId});
-          color = 'orange';
+    const handleHeroVariantChange = (id: string) => {
+      if (!selectedBlockId || !activeBlock || !activeBlock.data) {
+        const updatedBlocks = activePage.blocks.map(b => b.id === selectedBlockId ? { ...b, variant: id } : b);
+        onUpdatePage(activePageId, { blocks: updatedBlocks });
+        return;
       }
-      
-      const style = { left: editorWidth + 256 }; // 256 is sidebar width
 
-      return (
-        <div style={style} className="fixed top-0 bottom-0 w-96 z-[90] bg-neutral-950 flex flex-col border-r border-neutral-800 shadow-2xl animate-in slide-in-from-left duration-300">
-            <div className="p-6 border-b border-neutral-800 flex justify-between items-center bg-neutral-900/50 sticky top-0 backdrop-blur z-20">
-                <div className="flex items-center gap-3">
-                    <BoxSelect size={20} className={`text-${color}-500`} />
-                    <div><h3 className="text-white font-bold">{title}</h3><p className="text-xs text-neutral-500">System Component</p></div>
-                </div>
-                <button onClick={() => { setIsSystemModalOpen(false); setWarningFields([]); setPendingVariant(null); }} className="text-neutral-500 hover:text-white"><X size={20} /></button>
-            </div>
+      const currentFields = Object.keys(activeBlock.data).filter(k => activeBlock.data![k]);
+      const targetFields = HERO_FIELDS[id] || [];
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8 relative">
-                {/* WARNING OVERLAY */}
-                {warningFields.length > 0 && (
-                    <div className="absolute inset-0 z-50 bg-neutral-950/95 p-6 flex flex-col items-center justify-center text-center animate-in fade-in duration-300">
-                        <div className="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center text-red-500 mb-4"><AlertTriangle size={24} /></div>
-                        <h4 className="text-white font-bold text-lg mb-2">Content Loss Warning</h4>
-                        <p className="text-neutral-400 text-sm mb-6">Switching to <span className="text-white font-bold">{HERO_OPTIONS.find(o => o.id === pendingVariant)?.name}</span> will hide the following text fields because they are not supported by this style:</p>
-                        <div className="bg-neutral-900 rounded-lg p-3 w-full mb-6 border border-neutral-800">
-                            {warningFields.map(field => (
-                                <div key={field} className="text-xs text-red-400 font-mono py-1 border-b border-neutral-800 last:border-0">{field}</div>
-                            ))}
-                        </div>
-                        <div className="flex gap-2 w-full">
-                            <button onClick={() => { setWarningFields([]); setPendingVariant(null); }} className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg font-bold text-sm transition-colors">Cancel</button>
-                            <button onClick={confirmVariantChange} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-sm transition-colors">Confirm</button>
-                        </div>
-                    </div>
-                )}
+      const lostFields = currentFields.filter(field => !targetFields.includes(field));
 
-                <div>
-                    <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><LayoutTemplate size={14} /> Style Matrix</h4>
-                    {renderSortControls(modalSort, setModalSort)}
-                    <div className="grid grid-cols-2 gap-2">
-                        {sortItems(options, modalSort).map((opt) => (
-                            <button key={opt.id} onClick={() => setSelection(opt.id)} className={`text-left p-3 rounded-lg border transition-all ${currentSelection === opt.id ? `bg-${color}-600/20 border-${color}-500 text-white` : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-600'}`}>
-                                <div className="font-bold text-xs mb-1 truncate">{opt.name}</div>
-                                <div className="text-[10px] opacity-60 truncate">{opt.description}</div>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </div>
-      );
-  };
-// ... rest of the file
-  const renderBlockArchitect = () => {
-    if (!isArchitectOpen) return null;
-    
+      if (lostFields.length > 0) {
+        setWarningFields(lostFields);
+        setPendingVariant(id);
+      } else {
+        const updatedBlocks = activePage.blocks.map(b => b.id === selectedBlockId ? { ...b, variant: id } : b);
+        onUpdatePage(activePageId, { blocks: updatedBlocks });
+      }
+    };
+
+    const confirmVariantChange = () => {
+      if (pendingVariant && selectedBlockId) {
+        const updatedBlocks = activePage.blocks.map(b => b.id === selectedBlockId ? { ...b, variant: pendingVariant } : b);
+        onUpdatePage(activePageId, { blocks: updatedBlocks });
+        setPendingVariant(null);
+        setWarningFields([]);
+      }
+    };
+
+    if (systemModalType === 'hero') {
+      options = HERO_OPTIONS;
+      // If a block is selected, use its variant, otherwise global
+      currentSelection = selectedBlockId ? activeBlock?.variant || config.heroStyle : config.heroStyle;
+      title = 'Hero Engine';
+      setSelection = (id) => {
+        if (selectedBlockId) {
+          handleHeroVariantChange(id);
+        } else {
+          onConfigChange({ ...config, heroStyle: id as HeroStyleId });
+        }
+      };
+      color = 'purple';
+    } else if (systemModalType === 'grid') {
+      options = PRODUCT_CARD_OPTIONS;
+      currentSelection = selectedBlockId ? activeBlock?.variant || config.productCardStyle : config.productCardStyle;
+      title = 'Product Grid Engine';
+      setSelection = (id) => {
+        if (selectedBlockId) {
+          const updatedBlocks = activePage.blocks.map(b => b.id === selectedBlockId ? { ...b, variant: id } : b);
+          onUpdatePage(activePageId, { blocks: updatedBlocks });
+        } else {
+          onConfigChange({ ...config, productCardStyle: id as ProductCardStyleId });
+        }
+      };
+      color = 'green';
+    } else if (systemModalType === 'footer') {
+      options = FOOTER_OPTIONS;
+      currentSelection = config.footerStyle;
+      title = 'Footer Architecture';
+      setSelection = (id) => onConfigChange({ ...config, footerStyle: id as FooterStyleId });
+      color = 'orange';
+    }
+
     const style = { left: editorWidth + 256 }; // 256 is sidebar width
 
     return (
-       <div style={style} className="fixed top-0 bottom-0 w-96 z-[90] bg-neutral-950 flex flex-col border-r border-neutral-800 shadow-2xl animate-in slide-in-from-left duration-300">
-          <div className="p-6 border-b border-neutral-800 flex justify-between items-center bg-neutral-900/50 sticky top-0 backdrop-blur z-20">
-             <div className="flex items-center gap-3">
-                <Wand2 size={20} className="text-blue-500" />
-                <div><h3 className="text-white font-bold">Block Architect</h3><p className="text-xs text-neutral-500">Visual Design Engine</p></div>
-             </div>
-             <button onClick={() => setIsArchitectOpen(false)} className="text-neutral-500 hover:text-white"><X size={20} /></button>
+      <div style={style} className="fixed top-0 bottom-0 w-96 z-[90] bg-neutral-950 flex flex-col border-r border-neutral-800 shadow-2xl animate-in slide-in-from-left duration-300">
+        <div className="p-6 border-b border-neutral-800 flex justify-between items-center bg-neutral-900/50 sticky top-0 backdrop-blur z-20">
+          <div className="flex items-center gap-3">
+            <BoxSelect size={20} className={`text-${color}-500`} />
+            <div><h3 className="text-white font-bold">{title}</h3><p className="text-xs text-neutral-500">System Component</p></div>
           </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
-             <div>
-                <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><LayoutTemplate size={14} /> Layout Matrix</h4>
-                <div className="grid grid-cols-2 gap-2">
-                   {['hero', 'split', 'card', 'cover'].map(l => (
-                      <button key={l} onClick={() => setArchitectConfig({...architectConfig, layout: l})} className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${architectConfig.layout === l ? 'bg-blue-600 border-blue-500 text-white' : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700'}`}>
-                         <BoxSelect size={20} /><span className="text-xs font-bold uppercase">{l}</span>
-                      </button>
-                   ))}
-                </div>
-             </div>
-             <div>
-                <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Type size={14} /> Content Control</h4>
-                <div className="space-y-3">
-                   <input value={architectConfig.heading} onChange={(e) => setArchitectConfig({...architectConfig, heading: e.target.value})} className="w-full bg-neutral-900 border border-neutral-800 rounded p-3 text-white text-sm font-bold focus:border-blue-500 outline-none" placeholder="Heading..." />
-                   <textarea value={architectConfig.body} onChange={(e) => setArchitectConfig({...architectConfig, body: e.target.value})} className="w-full h-24 bg-neutral-900 border border-neutral-800 rounded p-3 text-neutral-400 text-xs focus:border-blue-500 outline-none resize-none" placeholder="Body text..." />
-                </div>
-             </div>
-             <div>
-                <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><ImageIcon size={14} /> Visual Assets</h4>
-                <div className="space-y-3">
-                    <div className="relative aspect-video bg-neutral-900 rounded-lg overflow-hidden border border-neutral-800">
-                        <img src={architectConfig.image} className="w-full h-full object-cover opacity-50" />
-                        <button onClick={simulateImageGen} className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 hover:bg-black/40 transition-colors">
-                            {isGeneratingImage ? <Loader2 className="animate-spin text-white" /> : <><Sparkles size={16} className="text-blue-400" /><span className="text-xs font-bold text-white">Generate with Nexus AI</span></>}
-                        </button>
-                    </div>
-                </div>
-             </div>
-             <div>
-                <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Sliders size={14} /> Atmosphere</h4>
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-neutral-900 rounded-lg border border-neutral-800">
-                        <span className="text-xs text-neutral-400">Glassmorphism</span>
-                        <button onClick={() => setArchitectConfig(prev => ({...prev, glass: !prev.glass}))} className={`w-8 h-4 rounded-full transition-colors relative ${architectConfig.glass ? 'bg-blue-600' : 'bg-neutral-700'}`}>
-                            <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${architectConfig.glass ? 'translate-x-4' : ''}`}></div>
-                        </button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                        {['clean', 'dark', 'noise'].map(m => (
-                             <button key={m} onClick={() => setArchitectConfig(prev => ({...prev, bgMode: m}))} className={`py-2 text-[10px] uppercase font-bold rounded border ${architectConfig.bgMode === m ? 'bg-neutral-800 border-neutral-600 text-white' : 'bg-neutral-900 border-neutral-800 text-neutral-500'}`}>{m}</button>
-                        ))}
-                    </div>
-                </div>
-             </div>
+          <button onClick={() => { setIsSystemModalOpen(false); setWarningFields([]); setPendingVariant(null); }} className="text-neutral-500 hover:text-white"><X size={20} /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8 relative">
+          {/* WARNING OVERLAY */}
+          {warningFields.length > 0 && (
+            <div className="absolute inset-0 z-50 bg-neutral-950/95 p-6 flex flex-col items-center justify-center text-center animate-in fade-in duration-300">
+              <div className="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center text-red-500 mb-4"><AlertTriangle size={24} /></div>
+              <h4 className="text-white font-bold text-lg mb-2">Content Loss Warning</h4>
+              <p className="text-neutral-400 text-sm mb-6">Switching to <span className="text-white font-bold">{HERO_OPTIONS.find(o => o.id === pendingVariant)?.name}</span> will hide the following text fields because they are not supported by this style:</p>
+              <div className="bg-neutral-900 rounded-lg p-3 w-full mb-6 border border-neutral-800">
+                {warningFields.map(field => (
+                  <div key={field} className="text-xs text-red-400 font-mono py-1 border-b border-neutral-800 last:border-0">{field}</div>
+                ))}
+              </div>
+              <div className="flex gap-2 w-full">
+                <button onClick={() => { setWarningFields([]); setPendingVariant(null); }} className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg font-bold text-sm transition-colors">Cancel</button>
+                <button onClick={confirmVariantChange} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-sm transition-colors">Confirm</button>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><LayoutTemplate size={14} /> Style Matrix</h4>
+            {renderSortControls(modalSort, setModalSort)}
+            <div className="grid grid-cols-2 gap-2">
+              {sortItems(options, modalSort).map((opt) => (
+                <button key={opt.id} onClick={() => setSelection(opt.id)} className={`text-left p-3 rounded-lg border transition-all ${currentSelection === opt.id ? `bg-${color}-600/20 border-${color}-500 text-white` : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-600'}`}>
+                  <div className="font-bold text-xs mb-1 truncate">{opt.name}</div>
+                  <div className="text-[10px] opacity-60 truncate">{opt.description}</div>
+                </button>
+              ))}
+            </div>
           </div>
-       </div>
+        </div>
+      </div>
+    );
+  };
+  // ... rest of the file
+  const renderBlockArchitect = () => {
+    if (!isArchitectOpen) return null;
+
+    const style = { left: editorWidth + 256 }; // 256 is sidebar width
+
+    return (
+      <div style={style} className="fixed top-0 bottom-0 w-96 z-[90] bg-neutral-950 flex flex-col border-r border-neutral-800 shadow-2xl animate-in slide-in-from-left duration-300">
+        <div className="p-6 border-b border-neutral-800 flex justify-between items-center bg-neutral-900/50 sticky top-0 backdrop-blur z-20">
+          <div className="flex items-center gap-3">
+            <Wand2 size={20} className="text-blue-500" />
+            <div><h3 className="text-white font-bold">Block Architect</h3><p className="text-xs text-neutral-500">Visual Design Engine</p></div>
+          </div>
+          <button onClick={() => setIsArchitectOpen(false)} className="text-neutral-500 hover:text-white"><X size={20} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+          <div>
+            <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><LayoutTemplate size={14} /> Layout Matrix</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {['hero', 'split', 'card', 'cover'].map(l => (
+                <button key={l} onClick={() => setArchitectConfig({ ...architectConfig, layout: l })} className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${architectConfig.layout === l ? 'bg-blue-600 border-blue-500 text-white' : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700'}`}>
+                  <BoxSelect size={20} /><span className="text-xs font-bold uppercase">{l}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Type size={14} /> Content Control</h4>
+            <div className="space-y-3">
+              <input value={architectConfig.heading} onChange={(e) => setArchitectConfig({ ...architectConfig, heading: e.target.value })} className="w-full bg-neutral-900 border border-neutral-800 rounded p-3 text-white text-sm font-bold focus:border-blue-500 outline-none" placeholder="Heading..." />
+              <textarea value={architectConfig.body} onChange={(e) => setArchitectConfig({ ...architectConfig, body: e.target.value })} className="w-full h-24 bg-neutral-900 border border-neutral-800 rounded p-3 text-neutral-400 text-xs focus:border-blue-500 outline-none resize-none" placeholder="Body text..." />
+            </div>
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><ImageIcon size={14} /> Visual Assets</h4>
+            <div className="space-y-3">
+              <div className="relative aspect-video bg-neutral-900 rounded-lg overflow-hidden border border-neutral-800">
+                <img src={architectConfig.image} className="w-full h-full object-cover opacity-50" />
+                <button onClick={simulateImageGen} className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 hover:bg-black/40 transition-colors">
+                  {isGeneratingImage ? <Loader2 className="animate-spin text-white" /> : <><Sparkles size={16} className="text-blue-400" /><span className="text-xs font-bold text-white">Generate with Nexus AI</span></>}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Sliders size={14} /> Atmosphere</h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-neutral-900 rounded-lg border border-neutral-800">
+                <span className="text-xs text-neutral-400">Glassmorphism</span>
+                <button onClick={() => setArchitectConfig(prev => ({ ...prev, glass: !prev.glass }))} className={`w-8 h-4 rounded-full transition-colors relative ${architectConfig.glass ? 'bg-blue-600' : 'bg-neutral-700'}`}>
+                  <div className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform ${architectConfig.glass ? 'translate-x-4' : ''}`}></div>
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {['clean', 'dark', 'noise'].map(m => (
+                  <button key={m} onClick={() => setArchitectConfig(prev => ({ ...prev, bgMode: m }))} className={`py-2 text-[10px] uppercase font-bold rounded border ${architectConfig.bgMode === m ? 'bg-neutral-800 border-neutral-600 text-white' : 'bg-neutral-900 border-neutral-800 text-neutral-500'}`}>{m}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   };
 
   const renderAddSectionLibrary = () => {
     if (!isAddSectionOpen) return null;
-    
+
     const style = { left: editorWidth + 256 }; // 256 is sidebar width
 
     return (
@@ -744,7 +834,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
           <button onClick={() => { setIsAddSectionOpen(false); setPreviewBlock(null); setAddSectionStep('categories'); }} className="text-neutral-500 hover:text-white"><X size={20} /></button>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
           {addSectionStep === 'categories' ? (
             <div className="space-y-2">
@@ -758,7 +848,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
                 <ChevronDown className="-rotate-90 text-neutral-600" />
               </button>
-              
+
               <button onClick={() => { setSelectedCategory('grid'); setAddSectionStep('options'); }} className="w-full p-4 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-green-500 rounded-xl flex items-center justify-between group transition-all">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-green-900/20 text-green-500 rounded-lg group-hover:bg-green-500 group-hover:text-white transition-colors"><Grid size={24} /></div>
@@ -769,11 +859,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
                 <ChevronDown className="-rotate-90 text-neutral-600" />
               </button>
+
+              {SECTION_CATEGORIES.map(cat => (
+                <button key={cat.id} onClick={() => { setSelectedCategory(cat.id as any); setAddSectionStep('options'); }} className="w-full p-4 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-blue-500 rounded-xl flex items-center justify-between group transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-900/20 text-blue-500 rounded-lg group-hover:bg-blue-500 group-hover:text-white transition-colors"><cat.icon size={24} /></div>
+                    <div className="text-left">
+                      <span className="block text-sm font-bold text-white">{cat.name}</span>
+                      <span className="text-xs text-neutral-500">{cat.description}</span>
+                    </div>
+                  </div>
+                  <ChevronDown className="-rotate-90 text-neutral-600" />
+                </button>
+              ))}
             </div>
           ) : (
             <div className="space-y-4">
               <button onClick={() => { setAddSectionStep('categories'); setPreviewBlock(null); }} className="text-xs font-bold text-neutral-500 hover:text-white flex items-center gap-1"><ChevronDown className="rotate-90" size={14} /> Back to Categories</button>
-              
+
               {selectedCategory === 'hero' && (
                 <div className="grid grid-cols-1 gap-2">
                   {HERO_OPTIONS.map(opt => (
@@ -795,196 +898,540 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   ))}
                 </div>
               )}
+
+              {/* Dynamic Categories */}
+              {SECTION_OPTIONS[selectedCategory as string] && (
+                <div className="grid grid-cols-1 gap-2">
+                  {SECTION_OPTIONS[selectedCategory as string].map(opt => (
+                    <button key={opt.id} onClick={() => handlePreviewBlock('system-ui', opt.name, '', opt.id)} className={`text-left p-3 rounded-xl border transition-all ${previewBlock?.variant === opt.id ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-600'}`}>
+                      <div className="font-bold text-sm">{opt.name}</div>
+                      <div className="text-[10px] opacity-60">{opt.description}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Footer Actions */}
         <div className="p-6 border-t border-neutral-800 bg-neutral-900/50 backdrop-blur z-20">
-           <button 
-             disabled={!previewBlock} 
-             onClick={() => previewBlock && addBlock(previewBlock.content, previewBlock.name, previewBlock.type, previewBlock.variant)}
-             className="w-full py-3 bg-white text-black rounded-lg font-bold hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-           >
-             <Check size={16} /> Confirm Selection
-           </button>
+          <button
+            disabled={!previewBlock}
+            onClick={() => previewBlock && addBlock(previewBlock.content, previewBlock.name, previewBlock.type, previewBlock.variant)}
+            className="w-full py-3 bg-white text-black rounded-lg font-bold hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <Check size={16} /> Confirm Selection
+          </button>
         </div>
       </div>
     );
   };
 
   const renderContent = () => {
-    switch(activeTab) {
+    switch (activeTab) {
       case AdminTab.DESIGN:
         const isAnyModalOpen = isHeaderModalOpen || isSystemModalOpen || isArchitectOpen || isAddSectionOpen;
         return (
           <div className="flex h-full w-full bg-neutral-950 overflow-hidden">
-             {/* LEFT COLUMN: EDITOR */}
-             <div style={{ width: editorWidth }} className="relative flex flex-col border-r border-neutral-800 bg-black/50 shrink-0">
-                <div 
-                  className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-600 transition-colors z-50"
-                  onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }}
-                />
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                   <div className="p-4 space-y-3">
-                  
+            {/* LEFT COLUMN: EDITOR */}
+            <div style={{ width: editorWidth }} className="relative flex flex-col border-r border-neutral-800 bg-black/50 shrink-0">
+              <div
+                className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-600 transition-colors z-50"
+                onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }}
+              />
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <div className="p-4 space-y-3">
+
                   {/* Pages & Navigation (Kept as requested) */}
                   <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
-                    <button onClick={() => setDesignSections(prev => ({...prev, pages: !prev.pages}))} className="w-full flex items-center justify-between p-4 hover:bg-neutral-800 transition-colors">
+                    <button onClick={() => setDesignSections(prev => ({ ...prev, pages: !prev.pages }))} className="w-full flex items-center justify-between p-4 hover:bg-neutral-800 transition-colors">
                       <div className="flex items-center gap-3"><div className="p-1.5 bg-neutral-800 rounded text-neutral-400"><FileText size={16} /></div><span className="font-bold text-sm text-white">Pages</span></div><ChevronDown size={16} className={`text-neutral-500 transition-transform ${designSections.pages ? 'rotate-180' : ''}`} />
                     </button>
                     {designSections.pages && (
-                       <div className="p-2 border-t border-neutral-800 bg-black/20 space-y-1">
-                          {pages.map(page => {
-                             const isActive = activePageId === page.id;
-                             return (
-                                <div key={page.id} className={`rounded-lg transition-colors ${isActive ? 'bg-neutral-900 border border-neutral-800' : ''}`}>
-                                    <button onClick={() => { onSetActivePage(page.id); setSelectedBlockId(null); setShowPageProperties(false); }} className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm transition-colors ${isActive ? 'text-blue-400' : 'text-neutral-400 hover:bg-white/5 hover:text-white'}`}>
-                                        <div className="flex items-center gap-3">{page.type === 'home' ? <Home size={14} /> : <FileText size={14} />}<span className="font-medium">{page.title}</span></div>
-                                        <div className="flex items-center gap-2">{isActive && (<button onClick={(e) => { e.stopPropagation(); setShowPageProperties(!showPageProperties); }} className={`p-1 rounded hover:bg-neutral-800 transition-colors ${showPageProperties ? 'text-white bg-neutral-800' : 'text-neutral-500'}`} title="Page Properties"><Settings size={12} /></button>)}{isActive && <span className="text-[10px] bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 font-bold">EDIT</span>}</div>
-                                    </button>
-                                    {isActive && showPageProperties && (
-                                        <div className="px-4 pb-4 pt-0 space-y-3 animate-in slide-in-from-top-2">
-                                            <div className="h-px bg-neutral-800 w-full mb-3"></div>
-                                            <div><label className="text-[10px] text-neutral-500 uppercase font-bold">Page Title</label><input value={page.title} onChange={(e) => onUpdatePage(page.id, { title: e.target.value })} className="w-full bg-black border border-neutral-700 rounded p-1.5 text-white text-xs mt-1 focus:border-blue-500 outline-none" /></div>
-                                            {page.type === 'custom' && (<div><label className="text-[10px] text-neutral-500 uppercase font-bold">URL Slug</label><input value={page.slug} onChange={(e) => onUpdatePage(page.id, { slug: e.target.value })} className="w-full bg-black border border-neutral-700 rounded p-1.5 text-neutral-400 font-mono text-xs mt-1 focus:border-blue-500 outline-none" /></div>)}
-                                        </div>
-                                    )}
+                      <div className="p-2 border-t border-neutral-800 bg-black/20 space-y-1">
+                        {pages.map(page => {
+                          const isActive = activePageId === page.id;
+                          return (
+                            <div key={page.id} className={`rounded-lg transition-colors ${isActive ? 'bg-neutral-900 border border-neutral-800' : ''}`}>
+                              <button onClick={() => { onSetActivePage(page.id); setSelectedBlockId(null); setShowPageProperties(false); }} className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm transition-colors ${isActive ? 'text-blue-400' : 'text-neutral-400 hover:bg-white/5 hover:text-white'}`}>
+                                <div className="flex items-center gap-3">{page.type === 'home' ? <Home size={14} /> : <FileText size={14} />}<span className="font-medium">{page.title}</span></div>
+                                <div className="flex items-center gap-2">{isActive && (<button onClick={(e) => { e.stopPropagation(); setShowPageProperties(!showPageProperties); }} className={`p-1 rounded hover:bg-neutral-800 transition-colors ${showPageProperties ? 'text-white bg-neutral-800' : 'text-neutral-500'}`} title="Page Properties"><Settings size={12} /></button>)}{isActive && <span className="text-[10px] bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 font-bold">EDIT</span>}</div>
+                              </button>
+                              {isActive && showPageProperties && (
+                                <div className="px-4 pb-4 pt-0 space-y-3 animate-in slide-in-from-top-2">
+                                  <div className="h-px bg-neutral-800 w-full mb-3"></div>
+                                  <div><label className="text-[10px] text-neutral-500 uppercase font-bold">Page Title</label><input value={page.title} onChange={(e) => onUpdatePage(page.id, { title: e.target.value })} className="w-full bg-black border border-neutral-700 rounded p-1.5 text-white text-xs mt-1 focus:border-blue-500 outline-none" /></div>
+                                  {page.type === 'custom' && (<div><label className="text-[10px] text-neutral-500 uppercase font-bold">URL Slug</label><input value={page.slug} onChange={(e) => onUpdatePage(page.id, { slug: e.target.value })} className="w-full bg-black border border-neutral-700 rounded p-1.5 text-neutral-400 font-mono text-xs mt-1 focus:border-blue-500 outline-none" /></div>)}
                                 </div>
-                             );
-                          })}
-                          <button onClick={handleAddNewPage} className="w-full flex items-center gap-2 px-4 py-3 rounded-lg text-sm text-neutral-500 hover:text-white hover:bg-white/5 border border-dashed border-neutral-800 hover:border-neutral-600 transition-all mt-2"><Plus size={14} /> Add New Page</button>
-                       </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        <button onClick={handleAddNewPage} className="w-full flex items-center gap-2 px-4 py-3 rounded-lg text-sm text-neutral-500 hover:text-white hover:bg-white/5 border border-dashed border-neutral-800 hover:border-neutral-600 transition-all mt-2"><Plus size={14} /> Add New Page</button>
+                      </div>
                     )}
                   </div>
 
                   {/* UNIFIED PAGE LAYOUT (The Hub) */}
                   <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
-                      <button onClick={() => setDesignSections(prev => ({...prev, pageSections: !prev.pageSections}))} className="w-full flex items-center justify-between p-4 hover:bg-neutral-800 transition-colors">
-                        <div className="flex items-center gap-3"><div className="p-1.5 bg-neutral-800 rounded text-neutral-400"><Layers size={16} /></div><span className="font-bold text-sm text-white">Layout</span></div><ChevronDown size={16} className={`text-neutral-500 transition-transform ${designSections.pageSections ? 'rotate-180' : ''}`} />
-                      </button>
-                      {designSections.pageSections && (
-                          <div className="p-4 pt-0 border-t border-neutral-800 bg-black/20">
-                              <div className="space-y-2 mb-4 mt-2">
-                                  {/* 1. FIXED HEADER */}
-                                  <div className="group flex items-center justify-between p-3 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-blue-500/50 transition-colors">
-                                      <div className="flex items-center gap-3">
-                                          <div className="p-1.5 bg-blue-900/30 text-blue-400 rounded"><PanelTop size={14} /></div>
-                                          <div className="flex flex-col">
-                                              <span className="text-xs font-bold text-white">Header</span>
-                                              <span className="text-[10px] text-neutral-500">{HEADER_OPTIONS.find(h => h.id === config.headerStyle)?.name}</span>
-                                          </div>
-                                      </div>
-                                      <button onClick={() => setIsHeaderModalOpen(true)} className="px-3 py-1.5 bg-neutral-800 hover:bg-blue-600 text-neutral-400 hover:text-white rounded text-xs font-bold transition-all">Edit</button>
-                                  </div>
-
-                                  {/* 2. DYNAMIC BLOCKS */}
-                                  {activePage.blocks?.map((block, idx) => (
-                                    <div key={block.id} className={`group flex items-center justify-between p-3 rounded-lg border transition-all ${selectedBlockId === block.id ? 'bg-neutral-800 border-neutral-700' : 'bg-transparent border-transparent hover:bg-white/5'}`}>
-                                        <div className="flex items-center gap-3 overflow-hidden">
-                                          <div className="text-[10px] font-bold text-neutral-600 w-4">{idx + 1}</div>
-                                          <div className="flex flex-col">
-                                              <span className="text-xs font-medium text-white truncate max-w-[100px]">{block.name}</span>
-                                              <span className="text-[10px] text-neutral-500 uppercase">{block.type.replace('system-', '')}</span>
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          <button 
-                                             onClick={() => {
-                                                if (block.type === 'system-hero') { setSelectedBlockId(block.id); setSystemModalType('hero'); setIsSystemModalOpen(true); }
-                                                else if (block.type === 'system-grid') { setSelectedBlockId(block.id); setSystemModalType('grid'); setIsSystemModalOpen(true); }
-                                                else if (block.type === 'system-footer') { setSelectedBlockId(null); setSystemModalType('footer'); setIsSystemModalOpen(true); }
-                                                else { handleOpenArchitect(block.id); }
-                                             }} 
-                                             className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded transition-colors" title="Edit Section"
-                                          >
-                                            <Edit3 size={14} />
-                                          </button>
-                                          <div className="flex flex-col gap-0.5">
-                                             <button onClick={() => moveBlock(idx, -1)} className="text-neutral-600 hover:text-white disabled:opacity-30" disabled={idx===0}><MoveUp size={10} /></button>
-                                             <button onClick={() => moveBlock(idx, 1)} className="text-neutral-600 hover:text-white disabled:opacity-30" disabled={idx===(activePage.blocks?.length||0)-1}><MoveDown size={10} /></button>
-                                          </div>
-                                          <button onClick={() => deleteBlock(block.id)} className="p-1.5 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors ml-1"><Trash2 size={14} /></button>
-                                        </div>
-                                    </div>
-                                  ))}
-
-                                  {/* 3. FIXED FOOTER */}
-                                  <div className="group flex items-center justify-between p-3 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 transition-colors">
-                                      <div className="flex items-center gap-3">
-                                          <div className="p-1.5 bg-orange-900/30 text-orange-400 rounded"><PanelBottom size={14} /></div>
-                                          <div className="flex flex-col">
-                                              <span className="text-xs font-bold text-white">Footer</span>
-                                              <span className="text-[10px] text-neutral-500">{FOOTER_OPTIONS.find(f => f.id === config.footerStyle)?.name}</span>
-                                          </div>
-                                      </div>
-                                      <button onClick={() => { setSelectedBlockId(null); setSystemModalType('footer'); setIsSystemModalOpen(true); }} className="px-3 py-1.5 bg-neutral-800 hover:bg-orange-600 text-neutral-400 hover:text-white rounded text-xs font-bold transition-all">Edit</button>
-                                  </div>
-
-                                  {/* ADD SECTION BUTTON */}
-                                  <div className="pt-4">
-                                      <button onClick={() => setIsAddSectionOpen(true)} className="w-full py-3 border border-dashed border-neutral-700 rounded-xl flex items-center justify-center gap-2 text-neutral-500 hover:text-white hover:border-neutral-500 hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-widest">
-                                          <Plus size={14} /> Add Section
-                                      </button>
-                                  </div>
+                    <button onClick={() => setDesignSections(prev => ({ ...prev, pageSections: !prev.pageSections }))} className="w-full flex items-center justify-between p-4 hover:bg-neutral-800 transition-colors">
+                      <div className="flex items-center gap-3"><div className="p-1.5 bg-neutral-800 rounded text-neutral-400"><Layers size={16} /></div><span className="font-bold text-sm text-white">Layout</span></div><ChevronDown size={16} className={`text-neutral-500 transition-transform ${designSections.pageSections ? 'rotate-180' : ''}`} />
+                    </button>
+                    {designSections.pageSections && (
+                      <div className="p-4 pt-0 border-t border-neutral-800 bg-black/20">
+                        <div className="space-y-2 mb-4 mt-2">
+                          {/* 1. FIXED HEADER */}
+                          <div className="group flex items-center justify-between p-3 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-blue-500/50 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="p-1.5 bg-blue-900/30 text-blue-400 rounded"><PanelTop size={14} /></div>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-white">Header</span>
+                                <span className="text-[10px] text-neutral-500">{HEADER_OPTIONS.find(h => h.id === config.headerStyle)?.name}</span>
                               </div>
+                            </div>
+                            <button onClick={() => setIsHeaderModalOpen(true)} className="px-3 py-1.5 bg-neutral-800 hover:bg-blue-600 text-neutral-400 hover:text-white rounded text-xs font-bold transition-all">Edit</button>
                           </div>
-                      )}
+
+                          {/* 2. DYNAMIC BLOCKS */}
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                          >
+                            <SortableContext
+                              items={activePage.blocks.map(b => b.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {activePage.blocks?.map((block, idx) => (
+                                <SortableBlockItem
+                                  key={block.id}
+                                  id={block.id}
+                                  block={block}
+                                  index={idx}
+                                  isActive={selectedBlockId === block.id}
+                                  onEdit={() => {
+                                    if (block.type === 'system-hero') { setSelectedBlockId(block.id); setSystemModalType('hero'); setIsSystemModalOpen(true); }
+                                    else if (block.type === 'system-grid') { setSelectedBlockId(block.id); setSystemModalType('grid'); setIsSystemModalOpen(true); }
+                                    else if (block.type === 'system-footer') { setSelectedBlockId(null); setSystemModalType('footer'); setIsSystemModalOpen(true); }
+                                    else { handleOpenArchitect(block.id); }
+                                  }}
+                                  onDelete={() => deleteBlock(block.id)}
+                                />
+                              ))}
+                            </SortableContext>
+                          </DndContext>
+
+                          {/* 3. FIXED FOOTER */}
+                          <div className="group flex items-center justify-between p-3 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-orange-500/50 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="p-1.5 bg-orange-900/30 text-orange-400 rounded"><PanelBottom size={14} /></div>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-white">Footer</span>
+                                <span className="text-[10px] text-neutral-500">{FOOTER_OPTIONS.find(f => f.id === config.footerStyle)?.name}</span>
+                              </div>
+                            </div>
+                            <button onClick={() => { setSelectedBlockId(null); setSystemModalType('footer'); setIsSystemModalOpen(true); }} className="px-3 py-1.5 bg-neutral-800 hover:bg-orange-600 text-neutral-400 hover:text-white rounded text-xs font-bold transition-all">Edit</button>
+                          </div>
+
+                          {/* ADD SECTION BUTTON */}
+                          <div className="pt-4">
+                            <button onClick={() => setIsAddSectionOpen(true)} className="w-full py-3 border border-dashed border-neutral-700 rounded-xl flex items-center justify-center gap-2 text-neutral-500 hover:text-white hover:border-neutral-500 hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-widest">
+                              <Plus size={14} /> Add Section
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  
+
                   {/* INLINE BLOCK EDITOR (Restored) */}
                   {selectedBlockId && activeBlock && activeBlock.type === 'section' && (
                     <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden animate-in slide-in-from-top-2">
-                        <div className="p-2 border-b border-neutral-800 flex items-center gap-2 bg-black/20">
-                            <button className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"><Bold size={14} /></button>
-                            <button className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"><Italic size={14} /></button>
-                            <button className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"><Link size={14} /></button>
-                            <div className="w-px h-4 bg-neutral-800 mx-1"></div>
-                            <button className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"><AlignLeft size={14} /></button>
-                            <button className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"><AlignCenter size={14} /></button>
-                            <button className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"><AlignRight size={14} /></button>
-                        </div>
-                        <textarea 
-                            value={activeBlock.content}
-                            onChange={(e) => updateActiveBlock(e.target.value)}
-                            className="w-full h-64 bg-transparent p-4 text-xs font-mono text-neutral-300 focus:outline-none resize-none"
-                            placeholder="Edit HTML content..."
-                        />
+                      <div className="p-2 border-b border-neutral-800 flex items-center gap-2 bg-black/20">
+                        <button className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"><Bold size={14} /></button>
+                        <button className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"><Italic size={14} /></button>
+                        <button className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"><Link size={14} /></button>
+                        <div className="w-px h-4 bg-neutral-800 mx-1"></div>
+                        <button className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"><AlignLeft size={14} /></button>
+                        <button className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"><AlignCenter size={14} /></button>
+                        <button className="p-1.5 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"><AlignRight size={14} /></button>
+                      </div>
+                      <textarea
+                        value={activeBlock.content}
+                        onChange={(e) => updateActiveBlock(e.target.value)}
+                        className="w-full h-64 bg-transparent p-4 text-xs font-mono text-neutral-300 focus:outline-none resize-none"
+                        placeholder="Edit HTML content..."
+                      />
                     </div>
                   )}
 
                 </div>
-                </div>
-             </div>
+              </div>
+            </div>
 
-             {/* RIGHT COLUMN: LIVE CANVAS */}
-             <div className={`flex-1 bg-[#111] flex flex-col relative transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isAnyModalOpen ? 'pl-96' : ''}`}>
-                <div className="h-12 border-b border-neutral-800 bg-neutral-900 flex items-center justify-between px-6 shrink-0 z-10">
-                   <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div><div className="w-2 h-2 rounded-full bg-yellow-500"></div><div className="w-2 h-2 rounded-full bg-green-500"></div></div>
-                   <div className="flex items-center gap-1 bg-black p-1 rounded-lg border border-neutral-800">
-                      <button onClick={() => setPreviewDevice('desktop')} className={`p-1.5 rounded ${previewDevice === 'desktop' ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'}`}><Monitor size={14} /></button>
-                      <button onClick={() => setPreviewDevice('mobile')} className={`p-1.5 rounded ${previewDevice === 'mobile' ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'}`}><Smartphone size={14} /></button>
-                   </div>
-                   <div className="text-xs text-neutral-500 font-mono">Live Preview: 12ms</div>
+            {/* RIGHT COLUMN: LIVE CANVAS */}
+            <div className={`flex-1 bg-[#111] flex flex-col relative transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isAnyModalOpen ? 'pl-96' : ''}`}>
+              <div className="h-12 border-b border-neutral-800 bg-neutral-900 flex items-center justify-between px-6 shrink-0 z-10">
+                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div><div className="w-2 h-2 rounded-full bg-yellow-500"></div><div className="w-2 h-2 rounded-full bg-green-500"></div></div>
+                <div className="flex items-center gap-1 bg-black p-1 rounded-lg border border-neutral-800">
+                  <button onClick={() => setPreviewDevice('desktop')} className={`p-1.5 rounded ${previewDevice === 'desktop' ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'}`}><Monitor size={14} /></button>
+                  <button onClick={() => setPreviewDevice('mobile')} className={`p-1.5 rounded ${previewDevice === 'mobile' ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'}`}><Smartphone size={14} /></button>
                 </div>
-                <div className="flex-1 overflow-hidden flex items-center justify-center p-8 bg-[radial-gradient(#222_1px,transparent_1px)] [background-size:16px_16px]">
-                   <div className={`bg-white transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] shadow-2xl overflow-hidden relative ${previewDevice === 'mobile' ? 'w-[375px] h-[812px] rounded-[40px] border-[8px] border-neutral-900' : 'w-full h-full max-w-[1400px] rounded-lg border border-neutral-800'}`}>
-                      <div className="w-full h-full overflow-y-auto bg-white custom-scrollbar">
-                         <Storefront 
-                            config={config} 
-                            products={products} 
-                            pages={pages} 
-                            activePageId={activePageId} 
-                            previewBlock={previewBlock}
-                            activeBlockId={selectedBlockId}
-                            onUpdateBlock={updateActiveBlockData}
-                          />
-                      </div>
-                   </div>
+                <div className="text-xs text-neutral-500 font-mono">Live Preview: 12ms</div>
+              </div>
+              <div className="flex-1 overflow-hidden flex items-center justify-center p-8 bg-[radial-gradient(#222_1px,transparent_1px)] [background-size:16px_16px]">
+                <div className={`bg-white transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] shadow-2xl overflow-hidden relative ${previewDevice === 'mobile' ? 'w-[375px] h-[812px] rounded-[40px] border-[8px] border-neutral-900' : 'w-full h-full max-w-[1400px] rounded-lg border border-neutral-800'}`}>
+                  <div className="w-full h-full overflow-y-auto bg-white custom-scrollbar">
+                    <Storefront
+                      config={config}
+                      products={products}
+                      pages={pages}
+                      activePageId={activePageId}
+                      previewBlock={previewBlock}
+                      activeBlockId={selectedBlockId}
+                      onUpdateBlock={updateActiveBlockData}
+                      scrolledBlockId={scrolledBlockId}
+                    />
+                  </div>
                 </div>
-             </div>
+              </div>
+            </div>
           </div>
         );
+      case AdminTab.DASHBOARD:
+        return (
+          <div className="p-8 max-w-7xl mx-auto w-full">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-3xl font-bold text-white mb-2">Command Center</h2>
+                <p className="text-neutral-400">Real-time overview of your commerce ecosystem.</p>
+              </div>
+              <div className="flex gap-2">
+                <div className="bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 flex flex-col items-end">
+                  <span className="text-[10px] text-neutral-500 uppercase font-bold">Revenue</span>
+                  <span className="text-xl font-bold text-white">$124,592</span>
+                </div>
+                <div className="bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-2 flex flex-col items-end">
+                  <span className="text-[10px] text-neutral-500 uppercase font-bold">Active Users</span>
+                  <span className="text-xl font-bold text-blue-500">1,204</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-2xl">
+                <div className="w-10 h-10 bg-blue-900/30 text-blue-500 rounded-lg flex items-center justify-center mb-4"><TrendingUp size={20} /></div>
+                <h3 className="text-2xl font-bold text-white mb-1">+24.5%</h3>
+                <p className="text-sm text-neutral-500">Growth rate this month</p>
+              </div>
+              <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-2xl">
+                <div className="w-10 h-10 bg-purple-900/30 text-purple-500 rounded-lg flex items-center justify-center mb-4"><ShoppingBag size={20} /></div>
+                <h3 className="text-2xl font-bold text-white mb-1">842</h3>
+                <p className="text-sm text-neutral-500">Orders processed</p>
+              </div>
+              <div className="bg-neutral-900/50 border border-neutral-800 p-6 rounded-2xl">
+                <div className="w-10 h-10 bg-orange-900/30 text-orange-500 rounded-lg flex items-center justify-center mb-4"><Zap size={20} /></div>
+                <h3 className="text-2xl font-bold text-white mb-1">98.9%</h3>
+                <p className="text-sm text-neutral-500">System uptime</p>
+              </div>
+            </div>
+
+            <div className="bg-neutral-900/30 border border-neutral-800 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-white mb-4">Recent Activity</h3>
+              <div className="space-y-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex items-center justify-between p-4 bg-neutral-900/50 rounded-xl border border-neutral-800/50">
+                    <div className="flex items-center gap-4">
+                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      <div>
+                        <div className="text-sm font-bold text-white">New Order #492{i}</div>
+                        <div className="text-xs text-neutral-500">Just now</div>
+                      </div>
+                    </div>
+                    <div className="text-sm font-bold text-white">$249.00</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      case AdminTab.PRODUCTS:
+        return (
+          <div className="p-8 max-w-7xl mx-auto w-full">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-3xl font-bold text-white mb-2">Inventory</h2>
+                <p className="text-neutral-400">Manage your products and collections.</p>
+              </div>
+              <button
+                onClick={() => setIsUploadModalOpen(true)}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-2 transition-colors"
+              >
+                <Plus size={18} /> Add Product
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {products.map(product => (
+                <div key={product.id} className="group bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden hover:border-neutral-600 transition-all">
+                  <div className="aspect-[4/3] bg-neutral-800 relative overflow-hidden">
+                    <img src={product.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute top-3 right-3 bg-black/60 backdrop-blur px-2 py-1 rounded text-xs font-bold text-white border border-white/10">
+                      {product.stock} in stock
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="text-xs text-blue-400 font-bold uppercase tracking-wider mb-1">{product.category}</div>
+                        <h3 className="text-lg font-bold text-white">{product.name}</h3>
+                      </div>
+                      <div className="text-lg font-bold text-white">${(product.price / 100).toFixed(2)}</div>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <button className="flex-1 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg text-sm font-bold transition-colors">Edit</button>
+                      <button className="p-2 bg-neutral-800 hover:bg-red-900/30 text-neutral-400 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={18} /></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Add New Placeholder */}
+              <button
+                onClick={() => setIsUploadModalOpen(true)}
+                className="aspect-[4/3] bg-neutral-900/50 border border-dashed border-neutral-800 rounded-2xl flex flex-col items-center justify-center gap-4 text-neutral-500 hover:text-white hover:border-neutral-600 hover:bg-neutral-900 transition-all group"
+              >
+                <div className="w-16 h-16 rounded-full bg-neutral-800 group-hover:bg-blue-600/20 group-hover:text-blue-500 flex items-center justify-center transition-colors">
+                  <Plus size={32} />
+                </div>
+                <span className="font-bold">Add New Product</span>
+              </button>
+            </div>
+
+            {/* Magic Upload Modal */}
+            {isUploadModalOpen && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-in fade-in">
+                <div className="w-full max-w-2xl bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden shadow-2xl">
+                  <div className="p-6 border-b border-neutral-800 flex justify-between items-center">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2"><Sparkles className="text-blue-500" /> Magic Upload</h3>
+                    <button onClick={() => setIsUploadModalOpen(false)} className="text-neutral-500 hover:text-white"><X size={24} /></button>
+                  </div>
+
+                  <div className="p-8">
+                    {uploadStep === 'upload' && (
+                      <div className="space-y-6">
+                        <div className="border-2 border-dashed border-neutral-700 rounded-2xl p-12 flex flex-col items-center justify-center text-center hover:border-blue-500 hover:bg-blue-900/5 transition-all cursor-pointer">
+                          <Upload size={48} className="text-neutral-500 mb-4" />
+                          <h4 className="text-lg font-bold text-white mb-2">Drop product image here</h4>
+                          <p className="text-neutral-500 text-sm max-w-xs">Our AI will analyze the image to automatically generate title, pricing, and details.</p>
+                          <button onClick={() => startMagicUpload('https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=1000')} className="mt-6 px-6 py-2 bg-neutral-800 hover:bg-white hover:text-black text-white rounded-full text-sm font-bold transition-all">
+                            Use Demo Image
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {uploadStep === 'analyzing' && (
+                      <div className="py-12 flex flex-col items-center text-center">
+                        <div className="relative w-24 h-24 mb-8">
+                          <div className="absolute inset-0 rounded-full border-4 border-neutral-800"></div>
+                          <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+                          <div className="absolute inset-0 flex items-center justify-center font-bold text-xl text-white">{analysisProgress}%</div>
+                        </div>
+                        <h4 className="text-xl font-bold text-white mb-2">Analyzing Product...</h4>
+                        <p className="text-blue-400 font-mono text-sm animate-pulse">{analysisStatus}</p>
+                      </div>
+                    )}
+
+                    {uploadStep === 'review' && (
+                      <div className="grid grid-cols-2 gap-8">
+                        <div className="rounded-xl overflow-hidden bg-black">
+                          <img src={newProductImage} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-xs font-bold text-neutral-500 uppercase">Product Name</label>
+                            <input
+                              value={newProductData.name}
+                              onChange={e => setNewProductData({ ...newProductData, name: e.target.value })}
+                              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white font-bold mt-1 focus:border-blue-500 outline-none"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-xs font-bold text-neutral-500 uppercase">Price (Cents)</label>
+                              <input
+                                type="number"
+                                value={newProductData.price}
+                                onChange={e => setNewProductData({ ...newProductData, price: parseInt(e.target.value) })}
+                                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white font-mono mt-1 focus:border-blue-500 outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-neutral-500 uppercase">Category</label>
+                              <input
+                                value={newProductData.category}
+                                onChange={e => setNewProductData({ ...newProductData, category: e.target.value })}
+                                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-3 text-white mt-1 focus:border-blue-500 outline-none"
+                              />
+                            </div>
+                          </div>
+                          <div className="pt-4">
+                            <button onClick={handleSaveProduct} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2">
+                              <CheckCircle2 size={20} /> Save to Inventory
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case AdminTab.CAMPAIGNS:
+        return (
+          <div className="p-8 max-w-5xl mx-auto w-full">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-3xl font-bold text-white mb-2">Agent Campaigns</h2>
+                <p className="text-neutral-400">AI-driven marketing and customer engagement.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl">
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Sparkles size={18} className="text-purple-500" /> Campaign Generator</h3>
+                  <p className="text-sm text-neutral-400 mb-6">Select a goal and let our agents craft the perfect message sequence.</p>
+
+                  <div className="space-y-3 mb-6">
+                    <button className="w-full p-4 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 hover:border-purple-500 rounded-xl text-left transition-all">
+                      <div className="font-bold text-white text-sm">Recover Abandoned Carts</div>
+                      <div className="text-xs text-neutral-500">Target high-value carts from last 24h</div>
+                    </button>
+                    <button className="w-full p-4 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 hover:border-purple-500 rounded-xl text-left transition-all">
+                      <div className="font-bold text-white text-sm">VIP Product Drop</div>
+                      <div className="text-xs text-neutral-500">Early access for top 5% of customers</div>
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={generateCampaign}
+                    disabled={isGeneratingEmail}
+                    className="w-full py-3 bg-white text-black rounded-lg font-bold hover:bg-neutral-200 transition-colors disabled:opacity-50"
+                  >
+                    {isGeneratingEmail ? <Loader2 className="animate-spin mx-auto" /> : 'Generate Campaign'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden flex flex-col">
+                <div className="p-4 border-b border-neutral-800 bg-black/20 flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-500 uppercase">Preview</span>
+                  <div className="flex gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/20"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/20"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500/20"></div>
+                  </div>
+                </div>
+                <div className="flex-1 p-6 font-mono text-sm text-neutral-300 whitespace-pre-wrap leading-relaxed min-h-[400px]">
+                  {generatedEmail || <span className="text-neutral-600 italic">Select a campaign goal to generate content...</span>}
+                  {isGeneratingEmail && <span className="inline-block w-2 h-4 bg-blue-500 ml-1 animate-pulse"></span>}
+                </div>
+                {generatedEmail && !isGeneratingEmail && (
+                  <div className="p-4 border-t border-neutral-800 bg-neutral-900/50 flex gap-3">
+                    <button className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"><Send size={14} /> Launch Campaign</button>
+                    <button className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg font-bold text-sm transition-colors"><Edit3 size={14} /></button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+
+      case AdminTab.SETTINGS:
+        return (
+          <div className="p-8 max-w-3xl mx-auto w-full">
+            <h2 className="text-3xl font-bold text-white mb-8">Store Settings</h2>
+
+            <div className="space-y-8">
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
+                <div className="p-6 border-b border-neutral-800">
+                  <h3 className="text-lg font-bold text-white">General Information</h3>
+                </div>
+                <div className="p-6 space-y-6">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 uppercase mb-2">Store Name</label>
+                    <input
+                      value={config.name}
+                      onChange={(e) => onConfigChange({ ...config, name: e.target.value })}
+                      className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-500 uppercase mb-2">Currency</label>
+                      <select
+                        value={config.currency}
+                        onChange={(e) => onConfigChange({ ...config, currency: e.target.value })}
+                        className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors appearance-none"
+                      >
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="JPY">JPY (¥)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-500 uppercase mb-2">Primary Color</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="color"
+                          value={config.primaryColor}
+                          onChange={(e) => onConfigChange({ ...config, primaryColor: e.target.value })}
+                          className="h-11 w-11 bg-transparent rounded cursor-pointer"
+                        />
+                        <input
+                          value={config.primaryColor}
+                          onChange={(e) => onConfigChange({ ...config, primaryColor: e.target.value })}
+                          className="flex-1 bg-black border border-neutral-800 rounded-lg p-3 text-white font-mono focus:border-blue-500 outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
+                <div className="p-6 border-b border-neutral-800">
+                  <h3 className="text-lg font-bold text-white">SEO & Metadata</h3>
+                </div>
+                <div className="p-6 space-y-6">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 uppercase mb-2">Meta Title</label>
+                    <input
+                      placeholder="Nexus Commerce - Future of Retail"
+                      className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 uppercase mb-2">Meta Description</label>
+                    <textarea
+                      placeholder="Enter a brief description of your store..."
+                      className="w-full h-24 bg-black border border-neutral-800 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors resize-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       default:
         return <div className="p-8"><h2 className="text-white text-2xl">Dashboard</h2></div>;
     }

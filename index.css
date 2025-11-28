@@ -1,0 +1,669 @@
+@import "tailwindcss";
+@config "./tailwind.config.js";
+
+/* Custom Scrollbars */
+
+/* Minimal */
+.scrollbar-minimal::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.scrollbar-minimal::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-minimal::-webkit-scrollbar-thumb {
+    background: #e5e5e5;
+    border-radius: 3px;
+}
+
+.scrollbar-minimal::-webkit-scrollbar-thumb:hover {
+    background: #d4d4d4;
+}
+
+/* Hidden */
+.scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Nexus (Dark/Brand) */
+.scrollbar-nexus::-webkit-scrollbar {
+    width: 10px;
+}
+
+.scrollbar-nexus::-webkit-scrollbar-track {
+    background: #111;
+}
+
+.scrollbar-nexus::-webkit-scrollbar-thumb {
+    background: #333;
+    border: 2px solid #111;
+    border-radius: 5px;
+}
+
+.scrollbar-nexus::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+    /* Blue accent */
+}
+
+/* Glow (Neon) */
+.scrollbar-glow::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollbar-glow::-webkit-scrollbar-track {
+    background: #000;
+}
+
+.scrollbar-glow::-webkit-scrollbar-thumb {
+    background: #ccff00;
+    /* Neon Lime */
+    border: 3px solid #000;
+    border-radius: 6px;
+    box-shadow: 0 0 10px #ccff00;
+}
+
+.scrollbar-glow::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+}
+
+/* 1. Gradient Sunset */
+.scrollbar-gradient-sunset::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollbar-gradient-sunset::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.scrollbar-gradient-sunset::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #f97316, #db2777);
+    border: 3px solid #1a1a1a;
+    border-radius: 6px;
+}
+
+.scrollbar-gradient-sunset::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+}
+
+/* 2. Gradient Ocean */
+.scrollbar-gradient-ocean::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollbar-gradient-ocean::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+
+.scrollbar-gradient-ocean::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #0ea5e9, #3b82f6);
+    border: 3px solid #0f172a;
+    border-radius: 6px;
+}
+
+.scrollbar-gradient-ocean::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+}
+
+/* 3. Frosted Glass */
+.scrollbar-glass::-webkit-scrollbar {
+    width: 14px;
+}
+
+.scrollbar-glass::-webkit-scrollbar-track {
+    background: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%239C92AC' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 6V5zM6 5v1H5z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.scrollbar-glass::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 7px;
+    backdrop-filter: blur(4px);
+}
+
+.scrollbar-glass::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* 4. Brutalist */
+.scrollbar-brutalist::-webkit-scrollbar {
+    width: 16px;
+}
+
+.scrollbar-brutalist::-webkit-scrollbar-track {
+    background: #fff;
+    border-left: 2px solid #000;
+}
+
+.scrollbar-brutalist::-webkit-scrollbar-thumb {
+    background: #000;
+    border: 2px solid #fff;
+    border-radius: 0;
+}
+
+.scrollbar-brutalist::-webkit-scrollbar-thumb:hover {
+    background: #333;
+}
+
+/* 5. Neon Pink */
+.scrollbar-neon-pink::-webkit-scrollbar {
+    width: 10px;
+}
+
+.scrollbar-neon-pink::-webkit-scrollbar-track {
+    background: #2a0a18;
+}
+
+.scrollbar-neon-pink::-webkit-scrollbar-thumb {
+    background: #ff00ff;
+    border-radius: 0;
+    box-shadow: 0 0 10px #ff00ff;
+}
+
+.scrollbar-neon-pink::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+}
+
+/* 6. Cyber Blue */
+.scrollbar-cyber-blue::-webkit-scrollbar {
+    width: 8px;
+}
+
+.scrollbar-cyber-blue::-webkit-scrollbar-track {
+    background: #000;
+    border-left: 1px solid #00ffff;
+}
+
+.scrollbar-cyber-blue::-webkit-scrollbar-thumb {
+    background: #00ffff;
+    border-radius: 0;
+}
+
+.scrollbar-cyber-blue::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+    box-shadow: 0 0 15px #00ffff;
+}
+
+/* 7. Luxury Gold */
+.scrollbar-luxury::-webkit-scrollbar {
+    width: 10px;
+}
+
+.scrollbar-luxury::-webkit-scrollbar-track {
+    background: #1c1917;
+}
+
+.scrollbar-luxury::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+    border-radius: 5px;
+    border: 2px solid #1c1917;
+}
+
+.scrollbar-luxury::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+}
+
+/* 8. Retro Terminal */
+.scrollbar-retro::-webkit-scrollbar {
+    width: 14px;
+}
+
+.scrollbar-retro::-webkit-scrollbar-track {
+    background: #000;
+}
+
+.scrollbar-retro::-webkit-scrollbar-thumb {
+    background: #00ff00;
+    border: 2px solid #000;
+    border-radius: 0;
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, #000 2px, #000 4px);
+}
+
+.scrollbar-retro::-webkit-scrollbar-thumb:hover {
+    background: #00cc00;
+}
+
+/* 9. Soft Pill */
+.scrollbar-soft::-webkit-scrollbar {
+    width: 16px;
+}
+
+.scrollbar-soft::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-soft::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border: 5px solid transparent;
+    background-clip: content-box;
+    border-radius: 99px;
+}
+
+.scrollbar-soft::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+}
+
+/* 10. Outline */
+.scrollbar-outline::-webkit-scrollbar {
+    width: 10px;
+}
+
+.scrollbar-outline::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-outline::-webkit-scrollbar-thumb {
+    border: 3px solid #000;
+    border-radius: 6px;
+    box-shadow: 0 0 10px #ccff00;
+}
+
+.scrollbar-glow::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+}
+
+/* 1. Gradient Sunset */
+.scrollbar-gradient-sunset::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollbar-gradient-sunset::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.scrollbar-gradient-sunset::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #f97316, #db2777);
+    border: 3px solid #1a1a1a;
+    border-radius: 6px;
+}
+
+.scrollbar-gradient-sunset::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+}
+
+/* 2. Gradient Ocean */
+.scrollbar-gradient-ocean::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollbar-gradient-ocean::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+
+.scrollbar-gradient-ocean::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #0ea5e9, #3b82f6);
+    border: 3px solid #0f172a;
+    border-radius: 6px;
+}
+
+.scrollbar-gradient-ocean::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+}
+
+/* 3. Frosted Glass */
+.scrollbar-glass::-webkit-scrollbar {
+    width: 14px;
+}
+
+.scrollbar-glass::-webkit-scrollbar-track {
+    background: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%239C92AC' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 6V5zM6 5v1H5z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.scrollbar-glass::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 7px;
+    backdrop-filter: blur(4px);
+}
+
+.scrollbar-glass::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* 4. Brutalist */
+.scrollbar-brutalist::-webkit-scrollbar {
+    width: 16px;
+}
+
+.scrollbar-brutalist::-webkit-scrollbar-track {
+    background: #fff;
+    border-left: 2px solid #000;
+}
+
+.scrollbar-brutalist::-webkit-scrollbar-thumb {
+    background: #000;
+    border: 2px solid #fff;
+    border-radius: 0;
+}
+
+.scrollbar-brutalist::-webkit-scrollbar-thumb:hover {
+    background: #333;
+}
+
+/* 5. Neon Pink */
+.scrollbar-neon-pink::-webkit-scrollbar {
+    width: 10px;
+}
+
+.scrollbar-neon-pink::-webkit-scrollbar-track {
+    background: #2a0a18;
+}
+
+.scrollbar-neon-pink::-webkit-scrollbar-thumb {
+    background: #ff00ff;
+    border-radius: 0;
+    box-shadow: 0 0 10px #ff00ff;
+}
+
+.scrollbar-neon-pink::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+}
+
+/* 6. Cyber Blue */
+.scrollbar-cyber-blue::-webkit-scrollbar {
+    width: 8px;
+}
+
+.scrollbar-cyber-blue::-webkit-scrollbar-track {
+    background: #000;
+    border-left: 1px solid #00ffff;
+}
+
+.scrollbar-cyber-blue::-webkit-scrollbar-thumb {
+    background: #00ffff;
+    border-radius: 0;
+}
+
+.scrollbar-cyber-blue::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+    box-shadow: 0 0 15px #00ffff;
+}
+
+/* 7. Luxury Gold */
+.scrollbar-luxury::-webkit-scrollbar {
+    width: 10px;
+}
+
+.scrollbar-luxury::-webkit-scrollbar-track {
+    background: #1c1917;
+}
+
+.scrollbar-luxury::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+    border-radius: 5px;
+    border: 2px solid #1c1917;
+}
+
+.scrollbar-luxury::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+}
+
+/* 8. Retro Terminal */
+.scrollbar-retro::-webkit-scrollbar {
+    width: 14px;
+}
+
+.scrollbar-retro::-webkit-scrollbar-track {
+    background: #000;
+}
+
+.scrollbar-retro::-webkit-scrollbar-thumb {
+    background: #00ff00;
+    border: 2px solid #000;
+    border-radius: 0;
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, #000 2px, #000 4px);
+}
+
+.scrollbar-retro::-webkit-scrollbar-thumb:hover {
+    background: #00cc00;
+}
+
+/* 9. Soft Pill */
+.scrollbar-soft::-webkit-scrollbar {
+    width: 16px;
+}
+
+.scrollbar-soft::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-soft::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border: 5px solid transparent;
+    background-clip: content-box;
+    border-radius: 99px;
+}
+
+.scrollbar-soft::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+}
+
+/* 10. Outline */
+.scrollbar-outline::-webkit-scrollbar {
+    width: 10px;
+}
+
+.scrollbar-outline::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-outline::-webkit-scrollbar-thumb {
+    background: transparent;
+    border: 2px solid #525252;
+    border-radius: 5px;
+}
+
+.scrollbar-outline::-webkit-scrollbar-thumb:hover {
+    background: #525252;
+}
+
+/* --- GLASSMORPHISM COLLECTION --- */
+
+/* 11. Crystal Clear */
+.scrollbar-glass-crystal::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollbar-glass-crystal::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-glass-crystal::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 6px;
+    box-shadow: inset 0 0 4px rgba(255, 255, 255, 0.2);
+}
+
+.scrollbar-glass-crystal::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* 12. Deep Blur */
+.scrollbar-glass-blur::-webkit-scrollbar {
+    width: 14px;
+}
+
+.scrollbar-glass-blur::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(2px);
+}
+
+.scrollbar-glass-blur::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 7px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+    backdrop-filter: blur(10px);
+}
+
+.scrollbar-glass-blur::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* 13. Obsidian Glass */
+.scrollbar-glass-obsidian::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollbar-glass-obsidian::-webkit-scrollbar-track {
+    background: #000;
+}
+
+.scrollbar-glass-obsidian::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+.scrollbar-glass-obsidian::-webkit-scrollbar-thumb:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 14. Milky Glass */
+.scrollbar-glass-milk::-webkit-scrollbar {
+    width: 14px;
+}
+
+.scrollbar-glass-milk::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-glass-milk::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.4);
+    border: 4px solid transparent;
+    background-clip: content-box;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.scrollbar-glass-milk::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+/* 15. Holographic */
+.scrollbar-glass-holographic::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollbar-glass-holographic::-webkit-scrollbar-track {
+    background: #111;
+}
+
+.scrollbar-glass-holographic::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, rgba(255, 0, 0, 0.1), rgba(0, 255, 0, 0.1), rgba(0, 0, 255, 0.1));
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    backdrop-filter: hue-rotate(90deg);
+}
+
+.scrollbar-glass-holographic::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, rgba(255, 0, 0, 0.2), rgba(0, 255, 0, 0.2), rgba(0, 0, 255, 0.2));
+}
+
+/* 16. Floating Shard */
+.scrollbar-glass-borderless::-webkit-scrollbar {
+    width: 10px;
+}
+
+.scrollbar-glass-borderless::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-glass-borderless::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(4px);
+    border-radius: 2px;
+}
+
+.scrollbar-glass-borderless::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* 17. Fiber Glass */
+.scrollbar-glass-fiber::-webkit-scrollbar {
+    width: 14px;
+}
+
+.scrollbar-glass-fiber::-webkit-scrollbar-track {
+    background: #0a0a0a;
+}
+
+.scrollbar-glass-fiber::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1);
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255, 255, 255, 0.05) 2px, rgba(255, 255, 255, 0.05) 4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.scrollbar-glass-fiber::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* 18. Acrylic Block */
+.scrollbar-glass-acrylic::-webkit-scrollbar {
+    width: 16px;
+}
+
+.scrollbar-glass-acrylic::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-glass-acrylic::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0;
+    box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.1), inset -1px -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.scrollbar-glass-acrylic::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 19. Liquid Mirror */
+.scrollbar-glass-mirror::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollbar-glass-mirror::-webkit-scrollbar-track {
+    background: #000;
+}
+
+.scrollbar-glass-mirror::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, #333, #666, #333);
+    border-radius: 10px;
+    border: 2px solid #000;
+    opacity: 0.8;
+}
+
+.scrollbar-glass-mirror::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(90deg, #444, #888, #444);
+}
+
+/* 20. Glacier Ice */
+.scrollbar-glass-glacier::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollbar-glass-glacier::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+
+.scrollbar-glass-glacier::-webkit-scrollbar-thumb {
+    background: rgba(186, 230, 253, 0.2);
+    border: 1px solid rgba(186, 230, 253, 0.3);
+    border-radius: 6px;
+    box-shadow: 0 0 10px rgba(186, 230, 253, 0.1);
+}
+
+.scrollbar-glass-glacier::-webkit-scrollbar-thumb:hover {
+    background: rgba(186, 230, 253, 0.3);
+    box-shadow: 0 0 15px rgba(186, 230, 253, 0.2);
+}

@@ -14,7 +14,7 @@ const SCROLLBAR_OPTIONS = [
   { id: 'native', name: 'Native', description: 'Default browser scrollbar' },
   { id: 'minimal', name: 'Minimal', description: 'Thin, subtle gray track' },
   { id: 'hidden', name: 'Invisible', description: 'Scrollable but hidden' },
-  { id: 'nexus', name: 'Nexus Dark', description: 'Brand-aligned dark theme' },
+  { id: 'nexus', name: 'Evolv Dark', description: 'Brand-aligned dark theme' },
   { id: 'glow', name: 'Neon Glow', description: 'Cyberpunk accent glow' },
   { id: 'gradient-sunset', name: 'Sunset Drive', description: 'Warm gradient fade' },
   { id: 'gradient-ocean', name: 'Ocean Depths', description: 'Deep blue gradient' },
@@ -430,7 +430,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const generateCampaign = () => {
     setIsGeneratingEmail(true);
     setGeneratedEmail('');
-    const fullText = `Subject: Flash Sale: The Cyber Shell Jacket is waiting for you.\n\nHey [Customer Name],\n\nWe noticed you've been eyeing the Cyber Shell Jacket. Good news—it's currently one of our most sought-after pieces this season.\n\nFor the next 24 hours, we're unlocking an exclusive 20% off just for our VIP members. \n\nUse Code: NEXUS20\n\nDon't let this slip into the void.\n\n- The Nexus Team`;
+    const fullText = `Subject: Flash Sale: The Cyber Shell Jacket is waiting for you.\n\nHey [Customer Name],\n\nWe noticed you've been eyeing the Cyber Shell Jacket. Good news—it's currently one of our most sought-after pieces this season.\n\nFor the next 24 hours, we're unlocking an exclusive 20% off just for our VIP members. \n\nUse Code: EVOLV20\n\nDon't let this slip into the void.\n\n- The Evolv Team`;
 
     let i = 0;
     const interval = setInterval(() => {
@@ -466,8 +466,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     <div className="w-64 bg-nexus-black border-r border-nexus-gray flex flex-col h-full text-neutral-400 shrink-0 z-20">
       <div className="p-6 border-b border-nexus-gray">
         <div className="flex items-center gap-2 text-white">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold">N</div>
-          <span className="font-display font-bold text-xl tracking-tight">Nexus OS</span>
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold">E</div>
+          <span className="font-display font-bold text-xl tracking-tight">Evolv</span>
         </div>
       </div>
       <nav className="flex-1 p-4 space-y-2">
@@ -752,7 +752,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="relative aspect-video bg-neutral-900 rounded-lg overflow-hidden border border-neutral-800">
                 <img src={architectConfig.image} className="w-full h-full object-cover opacity-50" />
                 <button onClick={simulateImageGen} className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 hover:bg-black/40 transition-colors">
-                  {isGeneratingImage ? <Loader2 className="animate-spin text-white" /> : <><Sparkles size={16} className="text-blue-400" /><span className="text-xs font-bold text-white">Generate with Nexus AI</span></>}
+                  {isGeneratingImage ? <Loader2 className="animate-spin text-white" /> : <><Sparkles size={16} className="text-blue-400" /><span className="text-xs font-bold text-white">Generate with Evolv AI</span></>}
                 </button>
               </div>
             </div>
@@ -1213,8 +1213,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 space-y-4">
                 <h3 className="font-bold text-white border-b border-neutral-800 pb-4 mb-4">Contact & Social</h3>
-                <div><label className="text-xs font-bold text-neutral-500 uppercase">Support Email</label><input defaultValue="support@nexus.os" className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white mt-1" /></div>
-                <div><label className="text-xs font-bold text-neutral-500 uppercase">Instagram</label><input defaultValue="@nexus_os" className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white mt-1" /></div>
+                <div><label className="text-xs font-bold text-neutral-500 uppercase">Support Email</label><input defaultValue="support@evolv.os" className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white mt-1" /></div>
+                <div><label className="text-xs font-bold text-neutral-500 uppercase">Instagram</label><input defaultValue="@evolv_os" className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white mt-1" /></div>
               </div>
             </div>
           </div>

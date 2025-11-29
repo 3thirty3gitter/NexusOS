@@ -82,7 +82,7 @@ export const CampaignManager: React.FC<CampaignManagerProps> = ({
     // Simulate AI generation
     setTimeout(() => {
       const generatedSubject = "Exclusive Access: The Future of Streetwear is Here";
-      const generatedContent = "Hey [Name],\n\nWe noticed you've been checking out our latest drops. We want to give you early access to our upcoming collection.\n\nUse code NEXUS_VIP for 20% off your next order.\n\nDon't miss out.\n\n- The Nexus Team";
+      const generatedContent = "Hey [Name],\n\nWe noticed you've been checking out our latest drops. We want to give you early access to our upcoming collection.\n\nUse code EVOLV_VIP for 20% off your next order.\n\nDon't miss out.\n\n- The Evolv Team";
       
       setEditorState(prev => ({
         ...prev,

@@ -12,7 +12,7 @@ const DEFAULT_CAMPAIGNS: Campaign[] = [
     status: 'sent',
     audience: 'New Signups',
     subject: 'Welcome to the Future of Commerce',
-    content: 'Welcome to Nexus. We are glad you are here.',
+    content: 'Welcome to Evolv. We are glad you are here.',
     sentAt: new Date(Date.now() - 86400000).toISOString(),
     stats: { sent: 450, opened: 320, clicked: 110 }
   }
@@ -71,7 +71,7 @@ const DEFAULT_PAGES: Page[] = [
         id: 'b1',
         type: 'section',
         name: 'Hero Header',
-        content: '<div class="my-12 p-8 bg-neutral-50 rounded-2xl"><h2 class="text-3xl font-bold mb-4">We are Nexus.</h2><p class="text-lg text-neutral-600">Born from the belief that commerce should be fluid, we build tools for the next generation of creators.</p></div>'
+        content: '<div class="my-12 p-8 bg-neutral-50 rounded-2xl"><h2 class="text-3xl font-bold mb-4">We are Evolv.</h2><p class="text-lg text-neutral-600">Born from the belief that commerce should be fluid, we build tools for the next generation of creators.</p></div>'
       }
     ]
   }

@@ -24,7 +24,7 @@ export const Login = () => {
       if (error) throw error;
 
       if (data.session) {
-        navigate('/admin');
+        navigate('/');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to login');
@@ -40,7 +40,7 @@ export const Login = () => {
           <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white mb-4 shadow-lg shadow-blue-900/20">
             <ShieldCheck size={24} />
           </div>
-          <h1 className="text-2xl font-bold text-white">Nexus OS</h1>
+          <h1 className="text-2xl font-bold text-white">Evolv</h1>
           <p className="text-neutral-500">Restricted Access</p>
         </div>
 

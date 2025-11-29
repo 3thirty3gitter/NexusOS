@@ -99,18 +99,18 @@ export default function App() {
     <DataProvider>
       <BrowserRouter basename={basename}>
         <Routes>
-          {/* Public Storefront */}
-          <Route path="/" element={<StorefrontWrapper />} />
-          <Route path="/pages/:slug" element={<StorefrontWrapper />} />
+          {/* Core Application (Admin Panel) */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<AdminWrapper />} />
+          </Route>
+
+          {/* Public Storefront (Preview) */}
+          <Route path="/store" element={<StorefrontWrapper />} />
+          <Route path="/store/pages/:slug" element={<StorefrontWrapper />} />
           
           {/* Admin Authentication */}
           <Route path="/login" element={<Login />} />
           
-          {/* Protected Admin Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/admin" element={<AdminWrapper />} />
-          </Route>
-
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

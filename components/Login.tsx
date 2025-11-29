@@ -24,7 +24,7 @@ export const Login = () => {
       if (error) throw error;
 
       if (data.session) {
-        navigate('/');
+        navigate('/admin');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to login');

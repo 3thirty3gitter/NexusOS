@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
+import { MarketingLanding } from './components/MarketingLanding';
 import { AdminPanel } from './components/AdminPanel';
 import { Storefront } from './components/Storefront';
 import { Login } from './components/Login';
@@ -99,9 +100,12 @@ export default function App() {
     <DataProvider>
       <BrowserRouter basename={basename}>
         <Routes>
+          {/* Public Marketing Site */}
+          <Route path="/" element={<MarketingLanding />} />
+
           {/* Core Application (Admin Panel) */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<AdminWrapper />} />
+            <Route path="/admin" element={<AdminWrapper />} />
           </Route>
 
           {/* Public Storefront (Preview) */}

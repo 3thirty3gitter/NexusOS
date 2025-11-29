@@ -110,6 +110,7 @@ interface DataContextType {
   updateCampaign: (id: string, updates: Partial<Campaign>) => Promise<void>;
   deleteCampaign: (id: string) => Promise<void>;
   updateConfig: (config: StoreConfig) => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -310,10 +311,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.from('store_config').update(dbConfig).eq('id', 1);
   };
 
+  const signOut = async () => {
+    await supabase.auth.signOut();
+  };
+
   return (
     <DataContext.Provider value={{
       products, pages, mediaAssets, campaigns, storeConfig, loading, refreshData: fetchAllData,
-      addProduct, addPage, updatePage, deletePage, addAsset, deleteAsset, addCampaign, updateCampaign, deleteCampaign, updateConfig
+      addProduct, addPage, updatePage, deletePage, addAsset, deleteAsset, addCampaign, updateCampaign, deleteCampaign, updateConfig, signOut
     }}>
       {children}
     </DataContext.Provider>

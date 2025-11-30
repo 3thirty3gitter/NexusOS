@@ -86,6 +86,8 @@ export type ScrollbarStyleId =
   | 'glass-glacier';
 
 export interface StoreConfig {
+  id?: number; // Legacy ID
+  store_id?: string; // Tenant ID
   name: string;
   currency: string;
   headerStyle: HeaderStyleId;
@@ -130,6 +132,7 @@ export interface ProductSEO {
 
 export interface Product {
   id: string;
+  store_id?: string;
   name: string;
   description: string; // HTML/Rich text
   price: number;
@@ -199,6 +202,7 @@ export interface PageBlock {
 
 export interface Page {
   id: string;
+  store_id?: string;
   title: string;
   slug: string;
   content: string; // Deprecated
@@ -208,6 +212,7 @@ export interface Page {
 
 export interface MediaAsset {
   id: string;
+  store_id?: string;
   url: string;
   name: string;
   type: 'image' | 'model' | 'video';
@@ -217,6 +222,7 @@ export interface MediaAsset {
 
 export interface Campaign {
   id: string;
+  store_id?: string;
   name: string;
   type: 'email' | 'sms' | 'social';
   status: 'draft' | 'scheduled' | 'sent';

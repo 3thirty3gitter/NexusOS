@@ -122,75 +122,101 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(DEFAULT_STORE_CONFIG);
   const [loading, setLoading] = useState(true);
+  const [storeId, setStoreId] = useState<string | null>(null);
 
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      // 1. Products
-      const { data: productsData } = await supabase.from('products').select('*');
-      if (productsData && productsData.length > 0) {
-        setProducts(productsData.map(p => ({
-          ...p,
-          compareAtPrice: p.compare_at_price,
-          trackInventory: p.track_inventory,
-          hasVariants: p.has_variants,
-          variantOptions: p.variant_options,
-          allowCustomization: p.allow_customization,
-          createdAt: p.created_at,
-          updatedAt: p.updated_at
-        })));
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // If authenticated, load tenant data
+      if (session) {
+        // 1. Get Profile & Store ID
+        const { data: profile } = await supabase.from('profiles').select('store_id').eq('id', session.user.id).single();
+        
+        if (profile?.store_id) {
+          setStoreId(profile.store_id);
+          const currentStoreId = profile.store_id;
+
+          // 2. Products
+          const { data: productsData } = await supabase.from('products').select('*');
+          if (productsData && productsData.length > 0) {
+            setProducts(productsData.map(p => ({
+              ...p,
+              compareAtPrice: p.compare_at_price,
+              trackInventory: p.track_inventory,
+              hasVariants: p.has_variants,
+              variantOptions: p.variant_options,
+              allowCustomization: p.allow_customization,
+              createdAt: p.created_at,
+              updatedAt: p.updated_at
+            })));
+          } else {
+            setProducts([]); // No products for this tenant yet
+          }
+
+          // 3. Pages
+          const { data: pagesData } = await supabase.from('pages').select('*');
+          if (pagesData && pagesData.length > 0) {
+            setPages(pagesData.map(p => ({ ...p, createdAt: p.created_at })));
+          } else {
+            setPages(DEFAULT_PAGES); // Default pages for new tenants
+          }
+
+          // 4. Media
+          const { data: mediaData } = await supabase.from('media_assets').select('*');
+          if (mediaData && mediaData.length > 0) {
+            setMediaAssets(mediaData.map(m => ({ ...m, createdAt: m.created_at })));
+          } else {
+            setMediaAssets([]);
+          }
+
+          // 5. Campaigns
+          const { data: campaignsData } = await supabase.from('campaigns').select('*');
+          if (campaignsData && campaignsData.length > 0) {
+            setCampaigns(campaignsData.map(c => ({
+              ...c,
+              scheduledFor: c.scheduled_for,
+              sentAt: c.sent_at,
+              createdAt: c.created_at
+            })));
+          } else {
+            setCampaigns([]);
+          }
+
+          // 6. Config
+          const { data: configData } = await supabase.from('store_config').select('*').eq('store_id', currentStoreId).single();
+          if (configData) {
+            setStoreConfig({
+              store_id: configData.store_id,
+              name: configData.name,
+              currency: configData.currency,
+              headerStyle: configData.header_style as any,
+              heroStyle: configData.hero_style as any,
+              productCardStyle: configData.product_card_style as any,
+              footerStyle: configData.footer_style as any,
+              scrollbarStyle: configData.scrollbar_style as any,
+              primaryColor: configData.primary_color,
+              logoUrl: configData.logo_url,
+              logoHeight: configData.logo_height
+            });
+          }
+        }
       } else {
+        // Not authenticated - Load Mock Data for Demo Storefront
         setProducts(MOCK_PRODUCTS);
-      }
-
-      // 2. Pages
-      const { data: pagesData } = await supabase.from('pages').select('*');
-      if (pagesData && pagesData.length > 0) {
-        setPages(pagesData.map(p => ({ ...p, createdAt: p.created_at })));
-      } else {
         setPages(DEFAULT_PAGES);
-      }
-
-      // 3. Media
-      const { data: mediaData } = await supabase.from('media_assets').select('*');
-      if (mediaData && mediaData.length > 0) {
-        setMediaAssets(mediaData.map(m => ({ ...m, createdAt: m.created_at })));
-      } else {
         setMediaAssets(DEFAULT_MEDIA_ASSETS);
-      }
-
-      // 4. Campaigns
-      const { data: campaignsData } = await supabase.from('campaigns').select('*');
-      if (campaignsData && campaignsData.length > 0) {
-        setCampaigns(campaignsData.map(c => ({
-          ...c,
-          scheduledFor: c.scheduled_for,
-          sentAt: c.sent_at,
-          createdAt: c.created_at
-        })));
-      } else {
         setCampaigns(DEFAULT_CAMPAIGNS);
-      }
-
-      // 5. Config
-      const { data: configData } = await supabase.from('store_config').select('*').single();
-      if (configData) {
-        setStoreConfig({
-          name: configData.name,
-          currency: configData.currency,
-          headerStyle: configData.header_style as any,
-          heroStyle: configData.hero_style as any,
-          productCardStyle: configData.product_card_style as any,
-          footerStyle: configData.footer_style as any,
-          scrollbarStyle: configData.scrollbar_style as any,
-          primaryColor: configData.primary_color,
-          logoUrl: configData.logo_url,
-          logoHeight: configData.logo_height
-        });
+        setStoreConfig(DEFAULT_STORE_CONFIG);
       }
 
     } catch (error) {
       console.error('Error fetching data:', error);
+      // Fallback to mocks on error
+      setProducts(MOCK_PRODUCTS);
+      setPages(DEFAULT_PAGES);
+      setStoreConfig(DEFAULT_STORE_CONFIG);
     } finally {
       setLoading(false);
     }
@@ -204,8 +230,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addProduct = async (product: Product) => {
     setProducts(prev => [product, ...prev]);
+    if (!storeId) return; // Don't save if no tenant
     const dbProduct = {
       id: product.id,
+      store_id: storeId,
       name: product.name,
       description: product.description,
       price: product.price,
@@ -231,8 +259,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addPage = async (page: Page) => {
     setPages(prev => [...prev, page]);
+    if (!storeId) return;
     await supabase.from('pages').insert({
       id: page.id,
+      store_id: storeId,
       title: page.title,
       slug: page.slug,
       type: page.type,
@@ -253,7 +283,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addAsset = async (asset: MediaAsset) => {
     setMediaAssets(prev => [asset, ...prev]);
-    await supabase.from('media_assets').insert(asset);
+    if (!storeId) return;
+    await supabase.from('media_assets').insert({ ...asset, store_id: storeId });
   };
 
   const deleteAsset = async (assetId: string) => {
@@ -263,8 +294,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addCampaign = async (campaign: Campaign) => {
     setCampaigns(prev => [campaign, ...prev]);
+    if (!storeId) return;
     const dbCampaign = {
       id: campaign.id,
+      store_id: storeId,
       name: campaign.name,
       type: campaign.type,
       status: campaign.status,
@@ -295,7 +328,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateConfig = async (newConfig: StoreConfig) => {
     setStoreConfig(newConfig);
+    if (!storeId) return;
     const dbConfig = {
+      store_id: storeId,
       name: newConfig.name,
       currency: newConfig.currency,
       header_style: newConfig.headerStyle,
@@ -308,7 +343,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logo_height: newConfig.logoHeight,
       updated_at: new Date().toISOString()
     };
-    await supabase.from('store_config').update(dbConfig).eq('id', 1);
+    // Upsert config for this store
+    await supabase.from('store_config').upsert(dbConfig, { onConflict: 'store_id' });
   };
 
   const signOut = async () => {

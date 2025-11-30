@@ -135,11 +135,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // If authenticated, load tenant data
       if (session) {
+        // HARDCODE OVERRIDE FOR OWNER
+        const isOwner = session.user.email === 'trent@3thirty3.ca';
+
         // 1. Get Profile & Store ID
         const { data: profile } = await supabase.from('profiles').select('store_id, role').eq('id', session.user.id).single();
         
         if (profile) {
-          setUserRole(profile.role);
+          setUserRole(isOwner ? 'superuser' : profile.role);
+        } else if (isOwner) {
+           setUserRole('superuser');
         }
 
         // Determine which store ID to use

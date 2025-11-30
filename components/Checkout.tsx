@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CreditCard, Truck, ShieldCheck, ShoppingBag } from 'lucide-react';
@@ -12,6 +12,8 @@ export const Checkout: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<'shipping' | 'payment' | 'confirmation'>('shipping');
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [existingCustomerId, setExistingCustomerId] = useState<string | null>(null);
 
   const [customerDetails, setCustomerDetails] = useState({
     firstName: '',
@@ -21,6 +23,38 @@ export const Checkout: React.FC = () => {
     city: '',
     postalCode: ''
   });
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        // Fetch customer profile linked to this auth user
+        const { data: customer } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('auth_user_id', session.user.id)
+          .maybeSingle(); // Use maybeSingle to avoid error if not found
+        
+        if (customer) {
+          setExistingCustomerId(customer.id);
+          setCustomerDetails(prev => ({
+            ...prev,
+            firstName: customer.first_name || '',
+            lastName: customer.last_name || '',
+            email: customer.email || session.user.email || '',
+          }));
+        } else {
+            // Pre-fill email from auth if no customer record yet
+            setCustomerDetails(prev => ({
+                ...prev,
+                email: session.user.email || ''
+            }));
+        }
+      }
+    };
+    checkUser();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -42,30 +76,40 @@ export const Checkout: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      // 1. Create/Get Customer
-      const { data: customer, error: customerError } = await supabase
-        .from('customers')
-        .insert({
-          store_id: storeId,
-          email: customerDetails.email,
-          first_name: customerDetails.firstName,
-          last_name: customerDetails.lastName,
-          phone: '' 
-        })
-        .select()
-        .single();
+      let customerId = existingCustomerId;
 
-      if (customerError) throw customerError;
+      // 1. Create Customer if not exists
+      if (!customerId) {
+        const { data: customer, error: customerError } = await supabase
+          .from('customers')
+          .insert({
+            store_id: storeId,
+            auth_user_id: user?.id || null, // Link to auth user if logged in
+            email: customerDetails.email,
+            first_name: customerDetails.firstName,
+            last_name: customerDetails.lastName,
+            phone: '' 
+          })
+          .select()
+          .single();
+
+        if (customerError) throw customerError;
+        customerId = customer.id;
+      }
 
       // 2. Create Order
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           store_id: storeId,
-          customer_id: customer.id,
+          customer_id: customerId,
           total_amount: cartTotal * 1.08, // Including tax
           status: 'pending',
-          payment_status: 'paid'
+          payment_status: 'paid',
+          shipping_address_line1: customerDetails.address,
+          shipping_city: customerDetails.city,
+          shipping_postal_code: customerDetails.postalCode,
+          customer_email: customerDetails.email
         })
         .select()
         .single();
@@ -102,6 +146,16 @@ export const Checkout: React.FC = () => {
           // Fallback: Direct update (Only works if RLS allows public updates, which is risky)
           // We will skip this fallback to avoid security risks, assuming the RPC migration will be applied.
         }
+      }
+
+      // 5. Send Order Confirmation Email
+      const { error: emailError } = await supabase.functions.invoke('send-order-confirmation', {
+        body: { order_id: order.id }
+      });
+
+      if (emailError) {
+        console.warn('Failed to send order confirmation email:', emailError);
+        // Don't block the user flow for email failure
       }
 
       setOrderId(order.id);

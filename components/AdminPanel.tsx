@@ -10,6 +10,7 @@ import { Storefront } from './Storefront';
 import { CartDrawer } from './CartDrawer';
 import { MediaLibrary } from './MediaLibrary';
 import { CampaignManager } from './CampaignManager';
+import { OrderManager } from './OrderManager';
 import { supabase } from '../lib/supabaseClient';
 
 const SCROLLBAR_OPTIONS = [
@@ -637,6 +638,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       <nav className="flex-1 p-4 space-y-2">
         {[
           { id: AdminTab.DASHBOARD, icon: LayoutDashboard, label: 'Command Center' },
+          { id: AdminTab.ORDERS, icon: ShoppingBag, label: 'Orders' },
           { id: AdminTab.PRODUCTS, icon: Package, label: 'Products' },
           { id: AdminTab.PAGES, icon: FileText, label: 'Pages' },
           { id: AdminTab.MEDIA, icon: FolderOpen, label: 'Media Library' },
@@ -1250,6 +1252,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </div>
         );
+
+      case AdminTab.ORDERS:
+        return <OrderManager storeId={storeId || null} />;
 
       case AdminTab.PRODUCTS:
         return (

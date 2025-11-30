@@ -6,6 +6,7 @@ export enum ViewMode {
 
 export enum AdminTab {
   DASHBOARD = 'DASHBOARD',
+  ORDERS = 'ORDERS',
   PRODUCTS = 'PRODUCTS',
   PAGES = 'PAGES',
   MEDIA = 'MEDIA',

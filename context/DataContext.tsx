@@ -112,6 +112,8 @@ interface DataContextType {
   updateConfig: (config: StoreConfig) => Promise<void>;
   signOut: () => Promise<void>;
   userRole: string | null;
+  storeId: string | null;
+  switchStore: (storeId: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -126,7 +128,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [storeId, setStoreId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
-  const fetchAllData = async () => {
+  const fetchAllData = async (overrideStoreId?: string) => {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -140,12 +142,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserRole(profile.role);
         }
 
-        if (profile?.store_id) {
-          setStoreId(profile.store_id);
-          const currentStoreId = profile.store_id;
+        // Determine which store ID to use
+        // Priority: 1. Override (switchStore), 2. Current State (if set), 3. Profile Default
+        let targetStoreId = overrideStoreId || storeId || profile?.store_id;
+
+        if (targetStoreId) {
+          setStoreId(targetStoreId);
+          const currentStoreId = targetStoreId;
 
           // 2. Products
-          const { data: productsData } = await supabase.from('products').select('*');
+          const { data: productsData } = await supabase.from('products').select('*').eq('store_id', currentStoreId);
           if (productsData && productsData.length > 0) {
             setProducts(productsData.map(p => ({
               ...p,
@@ -162,7 +168,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           // 3. Pages
-          const { data: pagesData } = await supabase.from('pages').select('*');
+          const { data: pagesData } = await supabase.from('pages').select('*').eq('store_id', currentStoreId);
           if (pagesData && pagesData.length > 0) {
             setPages(pagesData.map(p => ({ ...p, createdAt: p.created_at })));
           } else {
@@ -170,7 +176,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           // 4. Media
-          const { data: mediaData } = await supabase.from('media_assets').select('*');
+          const { data: mediaData } = await supabase.from('media_assets').select('*').eq('store_id', currentStoreId);
           if (mediaData && mediaData.length > 0) {
             setMediaAssets(mediaData.map(m => ({ ...m, createdAt: m.created_at })));
           } else {
@@ -178,7 +184,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           // 5. Campaigns
-          const { data: campaignsData } = await supabase.from('campaigns').select('*');
+          const { data: campaignsData } = await supabase.from('campaigns').select('*').eq('store_id', currentStoreId);
           if (campaignsData && campaignsData.length > 0) {
             setCampaigns(campaignsData.map(c => ({
               ...c,
@@ -206,7 +212,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               logoUrl: configData.logo_url,
               logoHeight: configData.logo_height
             });
+          } else {
+             // Reset config if not found for this store
+             setStoreConfig(DEFAULT_STORE_CONFIG);
           }
+        } else {
+           // Logged in but no admin profile (Customer)
+           // Fallback to Mock Data for now
+           setProducts(MOCK_PRODUCTS);
+           setPages(DEFAULT_PAGES);
+           setMediaAssets(DEFAULT_MEDIA_ASSETS);
+           setCampaigns(DEFAULT_CAMPAIGNS);
+           setStoreConfig(DEFAULT_STORE_CONFIG);
         }
       } else {
         // Not authenticated - Load Mock Data for Demo Storefront
@@ -231,6 +248,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     fetchAllData();
   }, []);
+
+  const switchStore = async (newStoreId: string) => {
+    await fetchAllData(newStoreId);
+  };
 
   // --- Actions ---
 
@@ -360,7 +381,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <DataContext.Provider value={{
       products, pages, mediaAssets, campaigns, storeConfig, loading, refreshData: fetchAllData,
-      addProduct, addPage, updatePage, deletePage, addAsset, deleteAsset, addCampaign, updateCampaign, deleteCampaign, updateConfig, signOut, userRole
+      addProduct, addPage, updatePage, deletePage, addAsset, deleteAsset, addCampaign, updateCampaign, deleteCampaign, updateConfig, signOut, userRole, storeId, switchStore
     }}>
       {children}
     </DataContext.Provider>

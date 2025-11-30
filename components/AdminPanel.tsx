@@ -7,8 +7,10 @@ import { PRODUCT_CARD_OPTIONS, PRODUCT_CARD_COMPONENTS } from './ProductCardLibr
 import { FOOTER_OPTIONS } from './FooterLibrary';
 import { SCROLL_OPTIONS } from './ScrollLibrary';
 import { Storefront } from './Storefront';
+import { CartDrawer } from './CartDrawer';
 import { MediaLibrary } from './MediaLibrary';
 import { CampaignManager } from './CampaignManager';
+import { supabase } from '../lib/supabaseClient';
 
 const SCROLLBAR_OPTIONS = [
   { id: 'native', name: 'Native', description: 'Default browser scrollbar' },
@@ -122,8 +124,169 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateCampaign,
   onDeleteCampaign,
   onLogout,
-  userRole
+  userRole,
+  storeId,
+  onSwitchStore
 }) => {
+
+  // Platform Admin State
+  const [tenants, setTenants] = useState<any[]>([]);
+  const [isLoadingTenants, setIsLoadingTenants] = useState(false);
+  const [isCreateTenantOpen, setIsCreateTenantOpen] = useState(false);
+  const [newTenantName, setNewTenantName] = useState('');
+  const [newTenantSlug, setNewTenantSlug] = useState('');
+  const [isCreatingTenant, setIsCreatingTenant] = useState(false);
+
+  const handleCreateTenant = async () => {
+    if (!newTenantName || !newTenantSlug) return;
+    setIsCreatingTenant(true);
+    try {
+      // 1. Create Store
+      const { data: store, error: storeError } = await supabase
+        .from('stores')
+        .insert({ name: newTenantName, slug: newTenantSlug })
+        .select()
+        .single();
+
+      if (storeError) throw storeError;
+
+      // 2. Create Store Config
+      const { error: configError } = await supabase
+        .from('store_config')
+        .insert({ 
+            store_id: store.id, 
+            name: newTenantName,
+            currency: 'USD',
+            header_style: 'minimal',
+            footer_style: 'minimal',
+            hero_style: 'split',
+            product_card_style: 'minimal'
+        });
+
+      if (configError) throw configError;
+
+      // 3. Create Subscription
+      const { error: subError } = await supabase
+        .from('subscriptions')
+        .insert({ 
+            store_id: store.id, 
+            plan_id: 'free',
+            status: 'active',
+            current_period_start: new Date().toISOString(),
+            current_period_end: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString()
+        });
+      
+      if (subError) throw subError;
+
+      // 4. Refresh List
+      await fetchTenants();
+      setIsCreateTenantOpen(false);
+      setNewTenantName('');
+      setNewTenantSlug('');
+
+    } catch (error: any) {
+      console.error('Error creating tenant:', error);
+      alert('Failed to create tenant: ' + error.message);
+    } finally {
+      setIsCreatingTenant(false);
+    }
+  };
+
+  // Dashboard State
+  const [dashboardStats, setDashboardStats] = useState({
+    revenue: 0,
+    orders: 0,
+    activeUsers: 0
+  });
+
+  useEffect(() => {
+    if (activeTab === AdminTab.DASHBOARD) {
+      fetchDashboardStats();
+    }
+  }, [activeTab, storeId]);
+
+  const fetchDashboardStats = async () => {
+    try {
+      // Fetch Orders for Revenue & Count
+      let ordersQuery = supabase
+        .from('orders')
+        .select('total_amount');
+      
+      if (storeId) {
+        ordersQuery = ordersQuery.eq('store_id', storeId);
+      }
+
+      const { data: orders, error: ordersError } = await ordersQuery;
+      
+      if (ordersError) {
+        // If table doesn't exist yet (migration not run), fail gracefully
+        console.warn('Could not fetch orders:', ordersError.message);
+        return;
+      }
+
+      const totalRevenue = orders?.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0) || 0;
+      const totalOrders = orders?.length || 0;
+
+      // Fetch Customers (Active Users)
+      let customersQuery = supabase
+        .from('customers')
+        .select('*', { count: 'exact', head: true });
+
+      if (storeId) {
+        customersQuery = customersQuery.eq('store_id', storeId);
+      }
+
+      const { count: userCount, error: usersError } = await customersQuery;
+
+      setDashboardStats({
+        revenue: totalRevenue,
+        orders: totalOrders,
+        activeUsers: userCount || 0
+      });
+
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === AdminTab.PLATFORM && userRole === 'superuser') {
+      fetchTenants();
+    }
+  }, [activeTab, userRole]);
+
+  const fetchTenants = async () => {
+    setIsLoadingTenants(true);
+    try {
+      // Fetch Profiles (Tenants)
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*');
+      
+      if (profilesError) throw profilesError;
+
+      // Fetch Subscriptions
+      const { data: subscriptions, error: subsError } = await supabase
+        .from('subscriptions')
+        .select('*');
+
+      // Merge Data
+      const mergedTenants = profiles?.map(profile => {
+        const sub = subscriptions?.find(s => s.store_id === profile.store_id);
+        return {
+          ...profile,
+          subscription_tier: sub?.plan_id || 'Free',
+          subscription_status: sub?.status || 'Active' // Default to active if no sub record found (legacy)
+        };
+      }) || [];
+      
+      setTenants(mergedTenants);
+    } catch (error) {
+      console.error('Error fetching tenants:', error);
+    } finally {
+      setIsLoadingTenants(false);
+    }
+  };
 
   // Product Editor State
   const [isProductEditorOpen, setIsProductEditorOpen] = useState(false);
@@ -1050,8 +1213,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       previewBlock={previewBlock}
                       activeBlockId={selectedBlockId}
                       onUpdateBlock={updateActiveBlockData}
+                      showCartDrawer={false}
                     />
                   </div>
+                  <CartDrawer variant="absolute" />
                 </div>
               </div>
             </div>
@@ -1064,21 +1229,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="p-3 bg-blue-900/20 text-blue-500 rounded-xl"><DollarSign size={24} /></div>
-                  <div><div className="text-neutral-500 text-sm font-bold uppercase">Total Revenue</div><div className="text-2xl font-bold text-white">$124,592.00</div></div>
+                  <div><div className="text-neutral-500 text-sm font-bold uppercase">Total Revenue</div><div className="text-2xl font-bold text-white">${dashboardStats.revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div></div>
                 </div>
                 <div className="h-2 bg-neutral-800 rounded-full overflow-hidden"><div className="h-full w-[70%] bg-blue-600"></div></div>
               </div>
               <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="p-3 bg-purple-900/20 text-purple-500 rounded-xl"><Users size={24} /></div>
-                  <div><div className="text-neutral-500 text-sm font-bold uppercase">Active Users</div><div className="text-2xl font-bold text-white">8,549</div></div>
+                  <div className="p-3 bg-purple-900/20 text-purple-500 rounded-xl"><ShoppingBag size={24} /></div>
+                  <div><div className="text-neutral-500 text-sm font-bold uppercase">Orders</div><div className="text-2xl font-bold text-white">{dashboardStats.orders}</div></div>
                 </div>
                 <div className="h-2 bg-neutral-800 rounded-full overflow-hidden"><div className="h-full w-[45%] bg-purple-600"></div></div>
               </div>
               <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="p-3 bg-green-900/20 text-green-500 rounded-xl"><ShoppingBag size={24} /></div>
-                  <div><div className="text-neutral-500 text-sm font-bold uppercase">Orders</div><div className="text-2xl font-bold text-white">1,245</div></div>
+                  <div className="p-3 bg-green-900/20 text-green-500 rounded-xl"><Users size={24} /></div>
+                  <div><div className="text-neutral-500 text-sm font-bold uppercase">Customers</div><div className="text-2xl font-bold text-white">{dashboardStats.activeUsers}</div></div>
                 </div>
                 <div className="h-2 bg-neutral-800 rounded-full overflow-hidden"><div className="h-full w-[80%] bg-green-600"></div></div>
               </div>
@@ -1225,19 +1390,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       case AdminTab.PLATFORM:
         return (
           <div className="p-8 w-full max-w-7xl mx-auto">
-            <div className="mb-8">
-              <h2 className="text-3xl font-black text-white tracking-tight">Platform Administration</h2>
-              <p className="text-neutral-500">Manage tenants, subscriptions, and global settings</p>
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h2 className="text-3xl font-black text-white tracking-tight">Platform Administration</h2>
+                <p className="text-neutral-500">Manage tenants, subscriptions, and global settings</p>
+              </div>
+              <button onClick={() => setIsCreateTenantOpen(true)} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-2 transition-all">
+                <Plus size={18} /> Create Tenant
+              </button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl">
                 <div className="text-neutral-500 text-sm font-bold uppercase mb-2">Total Tenants</div>
-                <div className="text-4xl font-bold text-white">1</div>
+                <div className="text-4xl font-bold text-white">{tenants.length}</div>
               </div>
               <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl">
                 <div className="text-neutral-500 text-sm font-bold uppercase mb-2">Active Subscriptions</div>
-                <div className="text-4xl font-bold text-white">1</div>
+                <div className="text-4xl font-bold text-white">{tenants.filter(t => t.subscription_status === 'active').length}</div>
               </div>
               <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl">
                 <div className="text-neutral-500 text-sm font-bold uppercase mb-2">Monthly Revenue</div>
@@ -1250,28 +1420,97 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <h3 className="font-bold text-white">Tenants</h3>
               </div>
               <div className="p-6">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="text-neutral-500 text-xs uppercase">
-                      <th className="pb-4">Store Name</th>
-                      <th className="pb-4">Slug</th>
-                      <th className="pb-4">Status</th>
-                      <th className="pb-4">Created</th>
-                      <th className="pb-4"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm">
-                    <tr className="border-b border-neutral-800 last:border-0">
-                      <td className="py-4 font-bold text-white">Demo Store</td>
-                      <td className="py-4 text-neutral-400">demo-store</td>
-                      <td className="py-4"><span className="px-2 py-1 bg-green-900/30 text-green-500 rounded text-xs font-bold">Active</span></td>
-                      <td className="py-4 text-neutral-500">Just now</td>
-                      <td className="py-4 text-right"><button className="text-blue-500 hover:text-white font-bold">Manage</button></td>
-                    </tr>
-                  </tbody>
-                </table>
+                {isLoadingTenants ? (
+                  <div className="flex justify-center p-8"><Loader2 className="animate-spin text-blue-500" /></div>
+                ) : (
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="text-neutral-500 text-xs uppercase">
+                        <th className="pb-4">Store Name</th>
+                        <th className="pb-4">ID</th>
+                        <th className="pb-4">Role</th>
+                        <th className="pb-4">Plan</th>
+                        <th className="pb-4">Created</th>
+                        <th className="pb-4"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm">
+                      {tenants.map((tenant) => (
+                        <tr key={tenant.id} className="border-b border-neutral-800 last:border-0 hover:bg-white/5 transition-colors">
+                          <td className="py-4 font-bold text-white">{tenant.store_name || 'Untitled Store'}</td>
+                          <td className="py-4 text-neutral-400 font-mono text-xs">{tenant.id}</td>
+                          <td className="py-4"><span className={`px-2 py-1 rounded text-xs font-bold ${tenant.role === 'superuser' ? 'bg-purple-900/30 text-purple-500' : 'bg-green-900/30 text-green-500'}`}>{tenant.role || 'user'}</span></td>
+                          <td className="py-4"><span className={`px-2 py-1 rounded text-xs font-bold ${tenant.subscription_tier === 'pro' ? 'bg-blue-900/30 text-blue-400' : tenant.subscription_tier === 'enterprise' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-neutral-800 text-neutral-400'}`}>{tenant.subscription_tier}</span></td>
+                          <td className="py-4 text-neutral-500">{new Date(tenant.created_at).toLocaleDateString()}</td>
+                          <td className="py-4 text-right flex justify-end gap-2">
+                            <button className="text-neutral-400 hover:text-white text-xs font-bold px-2 py-1 border border-neutral-700 rounded hover:bg-neutral-800 transition-all">Upgrade</button>
+                            <button 
+                              onClick={() => {
+                                if (onSwitchStore) {
+                                  onSwitchStore(tenant.id);
+                                  // Switch to dashboard to see the effect
+                                  onTabChange(AdminTab.DASHBOARD);
+                                }
+                              }}
+                              className="text-blue-500 hover:text-white font-bold px-3 py-1 rounded hover:bg-blue-600 transition-all"
+                            >
+                              Manage
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
+
+            {isCreateTenantOpen && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                  <div className="p-6 border-b border-neutral-800 flex justify-between items-center">
+                    <h3 className="font-bold text-white text-lg">Create New Tenant</h3>
+                    <button onClick={() => setIsCreateTenantOpen(false)} className="text-neutral-500 hover:text-white"><X size={20} /></button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-neutral-500 uppercase block mb-2">Store Name</label>
+                      <input 
+                        value={newTenantName} 
+                        onChange={(e) => {
+                          setNewTenantName(e.target.value);
+                          // Auto-generate slug
+                          setNewTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
+                        }}
+                        className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-white focus:border-blue-500 outline-none transition-colors" 
+                        placeholder="e.g. Acme Corp"
+                        autoFocus
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-neutral-500 uppercase block mb-2">Store Slug (URL)</label>
+                      <input 
+                        value={newTenantSlug} 
+                        onChange={(e) => setNewTenantSlug(e.target.value)}
+                        className="w-full bg-black border border-neutral-800 rounded-lg p-3 text-neutral-400 font-mono text-sm focus:border-blue-500 outline-none transition-colors" 
+                        placeholder="e.g. acme-corp"
+                      />
+                    </div>
+                  </div>
+                  <div className="p-6 border-t border-neutral-800 bg-black/20 flex justify-end gap-3">
+                    <button onClick={() => setIsCreateTenantOpen(false)} className="px-4 py-2 text-neutral-400 hover:text-white font-bold text-sm">Cancel</button>
+                    <button 
+                      onClick={handleCreateTenant} 
+                      disabled={!newTenantName || !newTenantSlug || isCreatingTenant}
+                      className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold text-sm flex items-center gap-2"
+                    >
+                      {isCreatingTenant ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+                      Create Tenant
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
 

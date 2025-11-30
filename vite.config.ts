@@ -13,6 +13,34 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        proxy: {
+          '/auth': {
+            target: 'http://127.0.0.1:54321',
+            changeOrigin: true,
+            secure: false,
+          },
+          '/rest': {
+            target: 'http://127.0.0.1:54321',
+            changeOrigin: true,
+            secure: false,
+          },
+          '/storage': {
+            target: 'http://127.0.0.1:54321',
+            changeOrigin: true,
+            secure: false,
+          },
+          '/realtime': {
+            target: 'http://127.0.0.1:54321',
+            changeOrigin: true,
+            secure: false,
+            ws: true,
+          },
+          '/functions': {
+            target: 'http://127.0.0.1:54321',
+            changeOrigin: true,
+            secure: false,
+          },
+        }
       },
       plugins: [react()],
       define: {

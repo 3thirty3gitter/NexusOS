@@ -7,17 +7,15 @@ import { PRODUCT_CARD_COMPONENTS } from './ProductCardLibrary';
 import { FOOTER_COMPONENTS } from './FooterLibrary';
 import { SCROLL_COMPONENTS } from './ScrollLibrary';
 import { Plus } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { CartDrawer } from './CartDrawer';
 
-export const Storefront: React.FC<StorefrontProps> = ({ config, products, pages, activePageId, onNavigate, previewBlock, activeBlockId, onUpdateBlock }) => {
-  const [cart, setCart] = useState<Product[]>([]);
+export const Storefront: React.FC<StorefrontProps> = ({ config, products, pages, activePageId, onNavigate, previewBlock, activeBlockId, onUpdateBlock, showCartDrawer = true }) => {
+  const { addToCart, cartCount, setIsCartOpen } = useCart();
 
   const HeaderComponent = HEADER_COMPONENTS[config.headerStyle] || HEADER_COMPONENTS['canvas'];
   // Hero, Card, Footer components are now determined dynamically in renderBlock to allow for variants
   const FooterComponent = FOOTER_COMPONENTS[config.footerStyle] || FOOTER_COMPONENTS['columns'];
-
-  const addToCart = (product: Product) => {
-    setCart([...cart, product]);
-  };
 
   const activePage = pages.find(p => p.id === activePageId) || pages[0];
   const isSidebar = config.headerStyle === 'studio';
@@ -110,7 +108,8 @@ export const Storefront: React.FC<StorefrontProps> = ({ config, products, pages,
         logoUrl={config.logoUrl}
         logoHeight={config.logoHeight}
         links={navLinks}
-        cartCount={cart.length}
+        cartCount={cartCount}
+        onOpenCart={() => setIsCartOpen(true)}
       />
 
       <main className="flex-1">
@@ -165,6 +164,7 @@ export const Storefront: React.FC<StorefrontProps> = ({ config, products, pages,
       </main>
 
       <FooterComponent storeName={config.name} primaryColor={config.primaryColor} />
+      {showCartDrawer && <CartDrawer />}
     </div>
   );
 };

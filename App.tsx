@@ -5,8 +5,11 @@ import { MarketingLanding } from './components/MarketingLanding';
 import { AdminPanel } from './components/AdminPanel';
 import { Storefront } from './components/Storefront';
 import { Login } from './components/Login';
+import { AccountPage } from './components/AccountPage';
+import { Checkout } from './components/Checkout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { DataProvider, useData } from './context/DataContext';
+import { CartProvider } from './context/CartContext';
 import { Loader2 } from 'lucide-react';
 import { ViewMode, AdminTab } from './types';
 
@@ -49,7 +52,7 @@ const AdminWrapper = () => {
     storeConfig, products, pages, mediaAssets, campaigns, loading,
     updateConfig, addProduct, addPage, updatePage, deletePage, 
     addAsset, deleteAsset, addCampaign, updateCampaign, deleteCampaign,
-    signOut, userRole
+    signOut, userRole, switchStore, storeId
   } = useData();
 
   const [activeTab, setActiveTab] = React.useState<AdminTab>(AdminTab.DASHBOARD);
@@ -80,6 +83,8 @@ const AdminWrapper = () => {
       onDeleteCampaign={deleteCampaign}
       onLogout={signOut}
       userRole={userRole}
+      storeId={storeId}
+      onSwitchStore={switchStore}
     />
   );
 };
@@ -99,27 +104,31 @@ export default function App() {
 
   return (
     <DataProvider>
-      <BrowserRouter basename={basename}>
-        <Routes>
-          {/* Public Marketing Site */}
-          <Route path="/" element={<MarketingLanding />} />
+      <CartProvider>
+        <BrowserRouter basename={basename}>
+          <Routes>
+            {/* Public Marketing Site */}
+            <Route path="/" element={<MarketingLanding />} />
 
-          {/* Core Application (Admin Panel) */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/admin" element={<AdminWrapper />} />
-          </Route>
+            {/* Core Application (Admin Panel) */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/admin" element={<AdminWrapper />} />
+            </Route>
 
-          {/* Public Storefront (Preview) */}
-          <Route path="/store" element={<StorefrontWrapper />} />
-          <Route path="/store/pages/:slug" element={<StorefrontWrapper />} />
-          
-          {/* Admin Authentication */}
-          <Route path="/login" element={<Login />} />
-          
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+            {/* Public Storefront (Preview) */}
+            <Route path="/store" element={<StorefrontWrapper />} />
+            <Route path="/store/pages/:slug" element={<StorefrontWrapper />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/account" element={<AccountPage />} />
+            
+            {/* Admin Authentication */}
+            <Route path="/login" element={<Login />} />
+            
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </CartProvider>
     </DataProvider>
   );
 }

@@ -261,7 +261,39 @@ export interface AdminPanelProps {
   onDeleteCampaign: (id: string) => void;
   onLogout: () => void;
   userRole?: string | null;
+  storeId?: string | null;
+  onSwitchStore?: (storeId: string) => Promise<void>;
 }
+
+export interface Customer {
+  id: string;
+  store_id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  created_at: string;
+}
+
+export interface Order {
+  id: string;
+  store_id: string;
+  customer_id?: string;
+  total_amount: number;
+  currency: string;
+  status: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'refunded';
+  payment_status: 'unpaid' | 'paid' | 'failed';
+  created_at: string;
+}
+
+export interface Subscription {
+  id: string;
+  store_id: string;
+  plan_id: 'free' | 'pro' | 'enterprise';
+  status: 'active' | 'past_due' | 'cancelled' | 'trialing';
+  current_period_end?: string;
+}
+
 
 export interface StorefrontProps {
   config: StoreConfig;
@@ -272,4 +304,5 @@ export interface StorefrontProps {
   previewBlock?: PageBlock | null;
   activeBlockId?: string | null;
   onUpdateBlock?: (blockId: string, data: any) => void;
+  showCartDrawer?: boolean;
 }

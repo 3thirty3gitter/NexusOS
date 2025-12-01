@@ -169,11 +169,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         .insert({ 
             store_id: store.id, 
             name: newTenantName,
-            currency: 'USD',
+            currency: 'CAD',
             header_style: 'minimal',
             footer_style: 'minimal',
             hero_style: 'split',
-            product_card_style: 'minimal'
+            product_card_style: 'minimal',
+            tax_regions: [
+              { id: 'ca-gst', country_code: 'CA', region_code: '*', rate: 5, name: 'GST' },
+              { id: 'ca-on-hst', country_code: 'CA', region_code: 'ON', rate: 13, name: 'HST' }
+            ]
         });
 
       if (configError) throw configError;
@@ -402,7 +406,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleQuickAddTax = (type: 'US' | 'EU') => {
+  const handleQuickAddTax = (type: 'US' | 'EU' | 'CA') => {
+    if (type === 'CA') {
+        const newRegions = [
+            { id: Math.random().toString(36).substr(2, 9), country_code: 'CA', region_code: '*', rate: 5, name: 'GST' },
+            { id: Math.random().toString(36).substr(2, 9), country_code: 'CA', region_code: 'ON', rate: 13, name: 'HST' },
+            { id: Math.random().toString(36).substr(2, 9), country_code: 'CA', region_code: 'BC', rate: 7, name: 'PST' },
+            { id: Math.random().toString(36).substr(2, 9), country_code: 'CA', region_code: 'QC', rate: 9.975, name: 'QST' }
+        ];
+        onConfigChange({ ...config, taxRegions: [...(config.taxRegions || []), ...newRegions] });
+        setEditingTaxRegionId(newRegions[0].id);
+        return;
+    }
+
     const newRegion = type === 'US' 
       ? { id: Math.random().toString(36).substr(2, 9), country_code: 'US', region_code: '*', rate: 0, name: 'Sales Tax' }
       : { id: Math.random().toString(36).substr(2, 9), country_code: 'EU', region_code: '*', rate: 20, name: 'VAT' };
@@ -2129,6 +2145,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           className="text-xs font-bold bg-neutral-800 hover:bg-white hover:text-black text-white px-3 py-1.5 rounded-lg transition-colors"
                         >
                           + US Tax
+                        </button>
+                        <button 
+                          onClick={() => handleQuickAddTax('CA')}
+                          className="text-xs font-bold bg-neutral-800 hover:bg-white hover:text-black text-white px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          + Canada Tax
                         </button>
                         <button 
                           onClick={() => handleQuickAddTax('EU')}

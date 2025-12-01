@@ -151,11 +151,11 @@ export interface StoreConfig {
   }[];
   taxRegions?: {
     id: string;
-    country: string;
-    region: string;
+    country_code: string;
+    region_code: string;
     rate: number;
-    taxName: string;
-    shippingTaxed: boolean;
+    name: string;
+    shippingTaxed?: boolean;
   }[];
   notificationSettings?: {
     orderConfirmation?: boolean;

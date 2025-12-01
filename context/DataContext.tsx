@@ -79,7 +79,7 @@ const DEFAULT_PAGES: Page[] = [
 
 const DEFAULT_STORE_CONFIG: StoreConfig = {
   name: 'EVOLV',
-  currency: 'USD',
+  currency: 'CAD',
   headerStyle: 'canvas',
   heroStyle: 'impact',
   productCardStyle: 'classic',
@@ -97,7 +97,10 @@ const DEFAULT_STORE_CONFIG: StoreConfig = {
   storeAddress: {},
   storeFormats: { timezone: 'UTC', weightUnit: 'kg', dimensionUnit: 'cm' },
   shippingZones: [],
-  taxRegions: [],
+  taxRegions: [
+      { id: 'ca-gst', country_code: 'CA', region_code: '*', rate: 5, name: 'GST' },
+      { id: 'ca-on-hst', country_code: 'CA', region_code: 'ON', rate: 13, name: 'HST' }
+  ],
   notificationSettings: {}
 };
 

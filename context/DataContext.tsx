@@ -179,19 +179,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (profile) {
           setUserRole(isOwner ? 'superuser' : profile.role);
+          // If we found a profile, we MUST use this store_id unless explicitly overridden
+          if (!targetStoreId) {
+             targetStoreId = profile.store_id;
+          }
         } else if (isOwner) {
            setUserRole('superuser');
-        }
-
-        // Determine which store ID to use
-        // Priority: 1. Override (switchStore), 2. Domain Match, 3. Current State (if set), 4. Profile Default
-        if (!targetStoreId) {
-             targetStoreId = storeId || profile?.store_id;
         }
       }
 
       // If no store ID yet (Public Visitor or Guest), try to fetch the first store
-      if (!targetStoreId) {
+      // Only do this if we are NOT authenticated, to avoid leaking master store to new users with pending profiles
+      if (!targetStoreId && !session) {
         const { data: stores } = await supabase.from('stores').select('id').limit(1);
         if (stores && stores.length > 0) {
           targetStoreId = stores[0].id;
@@ -309,6 +308,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     fetchAllData();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_OUT') {
+        // Reset state on sign out
+        if (event === 'SIGNED_OUT') {
+          setStoreId(null);
+          setUserRole(null);
+          setProducts([]);
+          setPages([]);
+          setStoreConfig(DEFAULT_STORE_CONFIG);
+        }
+        fetchAllData();
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   const switchStore = async (newStoreId: string) => {

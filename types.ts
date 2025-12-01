@@ -57,6 +57,21 @@ export type FooterStyleId =
   | 'brand'
   | 'sitemap';
 
+export type TestimonialStyleId = 
+  | 'minimal'
+  | 'cards'
+  | 'grid';
+
+export type FAQStyleId =
+  | 'accordion'
+  | 'grid'
+  | 'simple';
+
+export type LogoCloudStyleId =
+  | 'simple'
+  | 'grid'
+  | 'ticker';
+
 export interface StoreConfig {
   name: string;
   currency: string;
@@ -86,7 +101,7 @@ export interface NavLink {
 
 export interface PageBlock {
   id: string;
-  type: 'section' | 'system-hero' | 'system-grid' | 'system-footer';
+  type: 'section' | 'system-hero' | 'system-grid' | 'system-footer' | 'system-testimonials' | 'system-faq' | 'system-logo-cloud';
   name: string;
   content: string; // HTML content for 'section', ignored/metadata for system blocks
   variant?: string; // Optional override for system styles (e.g. 'impact', 'minimal')
